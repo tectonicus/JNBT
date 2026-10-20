@@ -1,1 +1,18 @@
 /bin
+/.gradle/
+/build/
+
+# Ignore Gradle project-specific cache directory
+.gradle
+
+# Ignore Gradle build output directory
+build
+
+# Ignore Kotlin plugin data
+.kotlin
+
+# Ignore IDE-specific files and directories
+.idea/
+.project
+.classpath
+.settings/
