@@ -27,6 +27,57 @@ class NBTSerializationTest {
 	};
 
 	@Test
+	void usesModifiedUtf8ForNamesAndStrings() throws Exception {
+		// Minecraft writes NBT strings with DataOutput.writeUTF: U+0000 takes two
+		// bytes and each half of a surrogate pair takes three.
+		final String text = "a\u0000🌍";
+		final ByteArrayOutputStream expected = new ByteArrayOutputStream();
+		final DataOutputStream out = new DataOutputStream(expected);
+		out.writeByte(NBTConstants.TYPE_STRING);
+		out.writeUTF(text);
+		out.writeUTF(text);
+		final byte[] fixture = expected.toByteArray();
+
+		final StringTag tag = new StringTag(text, text);
+		assertArrayEquals(fixture, write(tag, NBTOutputStream.Compression.None));
+		assertEquals(tag, read(fixture, NBTInputStream.Compression.None));
+	}
+
+	@Test
+	void rejectsMalformedModifiedUtf8() {
+		assertThrows(IOException.class, () -> read(new byte[] { 8, 0, 0, 0, 1, (byte) 0xFF },
+				NBTInputStream.Compression.None));
+	}
+
+	@Test
+	void preservesCompoundEntryOrderWhenReading() throws Exception {
+		final Map<String, Tag> tags = new LinkedHashMap<String, Tag>();
+		for (final String key : new String[] { "zeta", "alpha", "Mid", "b", "yy", "c1" }) {
+			tags.put(key, new IntTag(key, key.length()));
+		}
+		final byte[] data = write(new CompoundTag("root", tags), NBTOutputStream.Compression.None);
+		final CompoundTag actual = (CompoundTag) read(data, NBTInputStream.Compression.None);
+		assertEquals(new ArrayList<String>(tags.keySet()),
+				new ArrayList<String>(actual.getValue().keySet()));
+		assertArrayEquals(data, write(actual, NBTOutputStream.Compression.None));
+	}
+
+	@Test
+	void byteArrayToStringShowsEachByteAsTwoHexDigits() {
+		assertEquals("TAG_Byte_Array(\"b\"): 80 FF 01 ",
+				new ByteArrayTag("b", new byte[] { (byte) 0x80, (byte) 0xFF, 1 }).toString());
+	}
+
+	@Test
+	void rejectsNullNamesAndValuesAtConstruction() {
+		assertThrows(NullPointerException.class, () -> new IntTag(null, 1));
+		assertThrows(NullPointerException.class, () -> new StringTag("s", null));
+		assertThrows(NullPointerException.class, () -> new ByteArrayTag("b", null));
+		assertThrows(NullPointerException.class, () -> new IntArrayTag("i", null));
+		assertThrows(NullPointerException.class, () -> new LongArrayTag("l", null));
+	}
+
+	@Test
 	void roundTripsEveryTagType() throws Exception {
 		final Map<String, Tag> tags = new LinkedHashMap<String, Tag>();
 		tags.put("byte", new ByteTag("byte", (byte) -7));

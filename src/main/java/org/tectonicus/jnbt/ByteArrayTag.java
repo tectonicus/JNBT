@@ -78,7 +78,7 @@ public final class ByteArrayTag extends Tag {
 	
 		final StringBuilder hex = new StringBuilder();
 		for (final byte b : value) {
-			final String hexDigits = Integer.toHexString(b).toUpperCase();
+			final String hexDigits = Integer.toHexString(b & 0xFF).toUpperCase();
 			if (hexDigits.length() == 1) {
 				hex.append("0");
 			}

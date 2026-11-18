@@ -37,6 +37,8 @@ package org.tectonicus.jnbt;
 
 //@formatter:on
 
+import java.util.Objects;
+
 /**
  * Represents a single NBT tag.
  * 
@@ -54,11 +56,13 @@ public abstract class Tag {
 	 * Creates the tag with the specified name.
 	 * 
 	 * @param name
-	 *            The name.
+	 *            The name; use an empty string for an unnamed tag.
+	 * @throws NullPointerException
+	 *             if the name is null.
 	 */
 	public Tag(final String name) {
 	
-		this.name = name;
+		this.name = Objects.requireNonNull(name, "name");
 	}
 	
 	/**

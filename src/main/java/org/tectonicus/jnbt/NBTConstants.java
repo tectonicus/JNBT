@@ -48,7 +48,14 @@ import java.nio.charset.Charset;
 public final class NBTConstants {
 	
 	/**
-	 * The character set used by NBT (UTF-8).
+	 * Standard UTF-8.
+	 * <p>
+	 * NBT tag names and string values are not stored in standard UTF-8 but in
+	 * Java's modified UTF-8 (see {@link java.io.DataInput#readUTF()}), which
+	 * {@link NBTInputStream} and {@link NBTOutputStream} use. The two agree
+	 * only for text without U+0000 or characters outside the Basic
+	 * Multilingual Plane, such as emoji.
+	 * </p>
 	 */
 	public static final Charset CHARSET = Charset.forName("UTF-8");
 	

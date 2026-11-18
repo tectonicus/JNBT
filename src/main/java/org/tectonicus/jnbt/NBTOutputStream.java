@@ -147,17 +147,13 @@ public final class NBTOutputStream implements Closeable {
 	
 		final int type = NBTUtils.getTypeCode(tag.getClass());
 		final String name = tag.getName();
-		final byte[] nameBytes = name.getBytes(NBTConstants.CHARSET);
-		if (nameBytes.length > 65535) {
-			throw new IOException("[JNBT] Tag name exceeds the 65535 byte NBT limit.");
-		}
+		checkStringLength("Tag name", name);
 		if (type == NBTConstants.TYPE_END) {
 			throw new IOException("[JNBT] Named TAG_End not permitted.");
 		}
-		
+
 		os.writeByte(type);
-		os.writeShort(nameBytes.length);
-		os.write(nameBytes);
+		os.writeUTF(name);
 		
 		writeTagPayload(tag);
 	}
@@ -295,12 +291,33 @@ public final class NBTOutputStream implements Closeable {
 	 */
 	private void writeStringTagPayload(final StringTag tag) throws IOException {
 	
-		final byte[] bytes = tag.getValue().getBytes(NBTConstants.CHARSET);
-		if (bytes.length > 65535) {
-			throw new IOException("[JNBT] String value exceeds the 65535 byte NBT limit.");
+		final String value = tag.getValue();
+		checkStringLength("String value", value);
+		os.writeUTF(value);
+	}
+
+	/**
+	 * Checks that a string fits in NBT's 65535-byte limit once encoded in
+	 * Java's modified UTF-8, before anything is written, so an oversized
+	 * string does not leave a partial tag in the stream.
+	 *
+	 * @param kind
+	 *            What the string is, for the error message.
+	 * @param value
+	 *            The string.
+	 * @throws IOException
+	 *             if the encoded string is longer than 65535 bytes.
+	 */
+	private static void checkStringLength(final String kind, final String value) throws IOException {
+		long length = 0;
+		for (int i = 0; i < value.length(); i++) {
+			final char c = value.charAt(i);
+			// Modified UTF-8 encodes U+0000 in two bytes and each UTF-16 surrogate in three.
+			length += (c >= 0x0001 && c <= 0x007F) ? 1 : (c <= 0x07FF) ? 2 : 3;
 		}
-		os.writeShort(bytes.length);
-		os.write(bytes);
+		if (length > 65535) {
+			throw new IOException("[JNBT] " + kind + " exceeds the 65535 byte NBT limit.");
+		}
 	}
 	
 	/**

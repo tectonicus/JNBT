@@ -37,6 +37,8 @@ package org.tectonicus.jnbt;
 
 //@formatter:on
 
+import java.util.Objects;
+
 /**
  * The <code>TAG_String</code> tag.
  * 
@@ -61,7 +63,7 @@ public final class StringTag extends Tag {
 	public StringTag(final String name, final String value) {
 	
 		super(name);
-		this.value = value;
+		this.value = Objects.requireNonNull(value, "value");
 	}
 	
 	@Override

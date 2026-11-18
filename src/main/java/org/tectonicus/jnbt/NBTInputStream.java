@@ -37,12 +37,13 @@ package org.tectonicus.jnbt;
 
 //@formatter:on
 
+import java.io.ByteArrayInputStream;
 import java.io.Closeable;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.GZIPInputStream;
@@ -210,15 +211,7 @@ public final class NBTInputStream implements Closeable {
 			checkDepth(depth);
 		}
 		
-		String name;
-		if (type != NBTConstants.TYPE_END) {
-			final int nameLength = is.readShort() & 0xFFFF;
-			final byte[] nameBytes = new byte[nameLength];
-			is.readFully(nameBytes);
-			name = new String(nameBytes, NBTConstants.CHARSET);
-		} else {
-			name = "";
-		}
+		final String name = (type != NBTConstants.TYPE_END) ? readString("tag name") : "";
 		
 		return readTagPayload(type, name, depth);
 	}
@@ -267,12 +260,7 @@ public final class NBTInputStream implements Closeable {
 					is.readFully(bytes);
 					return new ByteArrayTag(name, bytes);
 				case NBTConstants.TYPE_STRING :
-					length = is.readShort() & 0xFFFF;
-					checkLength("string", length, limits.getMaxStringBytes());
-					bytes = new byte[length];
-					is.readFully(bytes);
-					return new StringTag(name, new String(bytes,
-							NBTConstants.CHARSET));
+					return new StringTag(name, readString("string"));
 				case NBTConstants.TYPE_LIST :
 					final int childType = is.readByte() & 0xFF;
 					length = readLength("list", limits.getMaxListLength());
@@ -294,7 +282,8 @@ public final class NBTInputStream implements Closeable {
 					
 					return new ListTag(name, listType, tagList);
 				case NBTConstants.TYPE_COMPOUND :
-					final Map<String, Tag> tagMap = new HashMap<String, Tag>();
+					// Keep the stream's order so a read and write round trip is byte-for-byte stable.
+					final Map<String, Tag> tagMap = new LinkedHashMap<String, Tag>();
 					while (true) {
 						final Tag tag = readTag(depth + 1);
 						if (tag instanceof EndTag) {
@@ -323,6 +312,22 @@ public final class NBTInputStream implements Closeable {
 					throw new IOException("[JNBT] Invalid tag type: " + type
 							+ ".");
 			}
+	}
+
+	/**
+	 * Reads a length-prefixed string in Java's modified UTF-8, the encoding NBT
+	 * uses for tag names and string values. The length is checked against the
+	 * string limit before the bytes are allocated.
+	 */
+	private String readString(final String kind) throws IOException {
+		final int length = is.readUnsignedShort();
+		checkLength(kind, length, limits.getMaxStringBytes());
+		final byte[] encoded = new byte[length + 2];
+		encoded[0] = (byte) (length >>> 8);
+		encoded[1] = (byte) length;
+		is.readFully(encoded, 2, length);
+		// readUTF decodes modified UTF-8 and rejects malformed input with an IOException.
+		return DataInputStream.readUTF(new DataInputStream(new ByteArrayInputStream(encoded)));
 	}
 
 	private int readLength(final String kind, final int maximum) throws IOException {

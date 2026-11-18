@@ -1,6 +1,7 @@
 package org.tectonicus.jnbt;
 
 import java.util.Arrays;
+import java.util.Objects;
 
 //@formatter:off
 
@@ -63,7 +64,7 @@ public final class LongArrayTag extends Tag {
 	public LongArrayTag(final String name, final long[] value) {
 	
 		super(name);
-		this.value = Arrays.copyOf(value, value.length);
+		this.value = Arrays.copyOf(Objects.requireNonNull(value, "value"), value.length);
 	}
 	
 	@Override
