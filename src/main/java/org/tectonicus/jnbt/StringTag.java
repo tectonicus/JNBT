@@ -75,18 +75,9 @@ public final class StringTag extends Tag {
 	@Override
 	public String toString() {
 	
-		final String name = getName();
-		String append = "";
-		if ((name != null) && !name.equals("")) {
-			append = "(\"" + getName() + "\")";
-		}
-		return "TAG_String" + append + ": " + value;
+		return describe() + ": " + value;
 	}
 	
-	/*
-	 * (non-Javadoc)
-	 * @see java.lang.Object#hashCode()
-	 */
 	@Override
 	public int hashCode() {
 	
@@ -96,10 +87,6 @@ public final class StringTag extends Tag {
 		return result;
 	}
 	
-	/*
-	 * (non-Javadoc)
-	 * @see java.lang.Object#equals(java.lang.Object)
-	 */
 	@Override
 	public boolean equals(final Object obj) {
 	

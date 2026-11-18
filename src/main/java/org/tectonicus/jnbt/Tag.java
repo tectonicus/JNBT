@@ -81,35 +81,31 @@ public abstract class Tag {
 	 * @return The value of this tag.
 	 */
 	public abstract Object getValue();
-	
-	/*
-	 * (non-Javadoc)
-	 * @see java.lang.Object#hashCode()
+
+	/**
+	 * Formats the start of <code>toString()</code>: the tag type, followed by
+	 * the name in quotes if the tag has one, such as <code>TAG_Int("x")</code>.
+	 *
+	 * @return The tag type and name.
 	 */
+	final String describe() {
+
+		final String typeName = NBTUtils.getTypeName(getClass());
+		return name.isEmpty() ? typeName : typeName + "(\"" + name + "\")";
+	}
+
 	@Override
 	public int hashCode() {
-	
-		final int prime = 31;
-		int result = 1;
-		result = (prime * result) + ((name == null) ? 0 : name.hashCode());
-		return result;
+
+		return 31 + name.hashCode();
 	}
-	
-	/*
-	 * (non-Javadoc)
-	 * @see java.lang.Object#equals(java.lang.Object)
-	 */
+
 	@Override
 	public boolean equals(final Object obj) {
-	
+
 		if (this == obj) { return true; }
-		if (obj == null) { return false; }
 		if (!(obj instanceof Tag)) { return false; }
-		final Tag other = (Tag) obj;
-		if (name == null) {
-			if (other.name != null) { return false; }
-		} else if (!name.equals(other.name)) { return false; }
-		return true;
+		return name.equals(((Tag) obj).name);
 	}
 	
 }

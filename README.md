@@ -1,52 +1,126 @@
-# JNBT 1.4 Beta
+# JNBT
 
-The original JNBT project seems to have been abandoned.
-This fork of JNBT has mainly added support for Tag_Int_Array.
+JNBT is a Java library for reading and writing NBT (Named Binary Tag) files, the binary format Minecraft uses for
+worlds, chunks, player data and structures. The format is described at
+[minecraft.wiki/w/NBT_format](https://minecraft.wiki/w/NBT_format).
 
-Thanks to:
+This is the [Tectonicus](https://github.com/tectonicus/tectonicus) fork of JNBT, originally written by Graham Edgecombe
+([jnbt.org](http://jnbt.org/)). It requires Java 21 or later and has no dependencies.
 
-- Ancient (a.k.a. grahamedgecombe) - JNBT 1.0 and 1.1
-- osici - for the TAG_Lists bug
-- Jocopa3 - Initial Int-Array support
-- Morlok8k - Maintaining the project
+## Installation
 
-For more information about the license, see [LICENSE](LICENSE).
+JNBT is published to Maven Central as `org.tectonicus:jnbt`.
 
-For historical information about the project, see http://jnbt.org/.
+Gradle (Kotlin DSL):
 
-## JNBT: The Java NBT Library
+```kotlin
+dependencies {
+    implementation("org.tectonicus:jnbt:2.0.0")
+}
+```
 
-### What is NBT?
+Maven:
 
-NBT, or Named Binary Tag, is a file format created by Markus Persson for use with Minecraft levels. Although originally designed for Minecraft levels, it is appropriate for the vast majority of use cases.
+```xml
+<dependency>
+    <groupId>org.tectonicus</groupId>
+    <artifactId>jnbt</artifactId>
+    <version>2.0.0</version>
+</dependency>
+```
 
-### What is JNBT?
+## Usage
 
-JNBT is a library that can read and write NBT files, written in Java by Graham Edgecombe and available open-source under the BSD license.
+Reading a GZip-compressed file such as `level.dat`:
 
-## Version History
+```java
+try (NBTInputStream in = new NBTInputStream(Files.newInputStream(path), NBTCompression.GZIP)) {
+    CompoundTag root = (CompoundTag) in.readTag();
+    CompoundTag data = (CompoundTag) root.getValue().get("Data");
+    StringTag levelName = (StringTag) data.getValue().get("LevelName");
+    System.out.println(levelName.getValue());
+}
+```
 
-### 1.4
+Writing a tag:
 
-- (pruby) InputStream gzip/not-gziped support
-- (ensirius) Raw DataInputStream support
+```java
+Map<String, Tag> entries = new LinkedHashMap<>();
+entries.put("name", new StringTag("name", "Example"));
+entries.put("heights", new IntArrayTag("heights", new int[] { 64, 65, 66 }));
+CompoundTag root = new CompoundTag("", entries);
+
+try (NBTOutputStream out = new NBTOutputStream(Files.newOutputStream(path), NBTCompression.GZIP)) {
+    out.writeTag(root);
+}
+```
+
+Things to know:
+
+- **Compression:** `NBTCompression.NONE`, `GZIP` (used by `level.dat` and player files) and `DEFLATE` (zlib, used for
+  chunks inside region files). The same enum serves both streams.
+- **Read limits:** reading checks every length in the stream before allocating memory, so a corrupt or malicious file
+  fails with an `IOException` instead of exhausting memory. Pass an `NBTReadLimits` to change the defaults.
+- **Immutable tags:** compound and list values are read-only, and array tags copy their arrays in and out. Use
+  `length()` and `get(int)` on the array tags to read elements without copying.
+- **Strings:** tag names and string values use Java's modified UTF-8, the same encoding as Minecraft.
+- **Order:** compound entries keep their order, so reading and rewriting a file reproduces it byte for byte.
+
+## Building
+
+```shell
+./gradlew build
+```
+
+This compiles the library, runs the tests and checks the Javadoc.
+
+## Version history
+
+### 2.0.0 (Tectonicus)
+
+- (Charlie Birks) `TAG_Long_Array` and zlib (Deflate) compression support.
+- Added the `NBTCompression` enum (`NONE`, `GZIP`, `DEFLATE`) to choose the compression when reading or writing.
+- Published to Maven Central as `org.tectonicus:jnbt`, in the `org.tectonicus.jnbt` package, with a Gradle build.
+- Added `NBTReadLimits` to reject oversized or deeply nested input.
+- Made tags immutable, and rejected invalid lists and compounds and null names or values at construction.
+- Read and write strings as modified UTF-8, as Minecraft does, so null characters and emoji survive a round trip.
+- Kept compound entries in order when reading, and stored list entries without names, as the format does.
+- Closed the underlying stream when a constructor fails.
+- Added `length()` and `get(int)` to the array tags, and shortened `toString()` output for long arrays.
+
+### 1.4 (Morlok8k)
+
+- (pruby) Support for streams that are not GZip-compressed.
+- (ensirius) Support for reading from a raw `DataInputStream`.
 
 ### 1.3 (Morlok8k)
 
-- Changed encoding of .java files to UTF-8
-- added "[JNBT]" to error output
-- added .equals and .hashcode to tags
-- cleaned source and formatting, etc...
+- Changed encoding of .java files to UTF-8.
+- Added "[JNBT]" to error output.
+- Added `equals` and `hashCode` to tags.
+- Cleaned up source and formatting.
 
 ### 1.2 (Morlok8k)
 
-- Tag_Int_Array Support
+- `TAG_Int_Array` support.
 
 ### 1.1 (grahamedgecombe)
 
-- fix for writing TAG_Lists
-- toString() methods on each tag type
+- Fix for writing `TAG_List`.
+- `toString()` methods on each tag type.
 
 ### 1.0 (grahamedgecombe)
 
-- Initial Release
+- Initial release.
+
+## Credits
+
+- Graham Edgecombe (grahamedgecombe): JNBT 1.0 and 1.1
+- osici: the `TAG_List` bug fix
+- Jocopa3: initial `TAG_Int_Array` support
+- Morlok8k: maintaining the project
+- Charlie Birks and the Tectonicus contributors: the Tectonicus fork
+
+## License
+
+JNBT is available under the BSD 3-Clause license. See [LICENSE](LICENSE).

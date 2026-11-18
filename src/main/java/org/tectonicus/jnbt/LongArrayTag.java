@@ -1,8 +1,5 @@
 package org.tectonicus.jnbt;
 
-import java.util.Arrays;
-import java.util.Objects;
-
 //@formatter:off
 
 /*
@@ -40,10 +37,13 @@ import java.util.Objects;
 
 //@formatter:on
 
+import java.util.Arrays;
+import java.util.Objects;
+
 /**
  * The <code>TAG_Long_Array</code> tag.
  * 
- * @author Charlie Birks
+ * @author Graham Edgecombe
  * 
  */
 public final class LongArrayTag extends Tag {
@@ -59,7 +59,7 @@ public final class LongArrayTag extends Tag {
 	 * @param name
 	 *            The name.
 	 * @param value
-	 *            The value.
+	 *            The value, which is copied.
 	 */
 	public LongArrayTag(final String name, final long[] value) {
 	
@@ -67,53 +67,61 @@ public final class LongArrayTag extends Tag {
 		this.value = Arrays.copyOf(Objects.requireNonNull(value, "value"), value.length);
 	}
 	
+	/**
+	 * Gets a copy of the value. To read single elements without copying the
+	 * whole array, use {@link #length()} and {@link #get(int)}.
+	 * 
+	 * @return A copy of the value.
+	 */
 	@Override
 	public long[] getValue() {
 	
 		return Arrays.copyOf(value, value.length);
 	}
 	
+	/**
+	 * Gets the number of elements in the array.
+	 * 
+	 * @return The array length.
+	 */
+	public int length() {
+	
+		return value.length;
+	}
+	
+	/**
+	 * Gets one element of the array without copying it.
+	 * 
+	 * @param index
+	 *            The element index.
+	 * @return The element.
+	 * @throws ArrayIndexOutOfBoundsException
+	 *             if the index is out of range.
+	 */
+	public long get(final int index) {
+	
+		return value[index];
+	}
+	
 	@Override
 	public String toString() {
 	
-		final StringBuilder integers = new StringBuilder();
-		for (final long l : value) {
-			integers.append(l).append(" ");
-		}
-		final String name = getName();
-		String append = "";
-		if ((name != null) && !name.equals("")) {
-			append = "(\"" + getName() + "\")";
-		}
-		return "TAG_Long_Array" + append + ": " + integers.toString();
+		return describe() + ": " + NBTUtils.joinElements(value.length, i -> Long.toString(value[i]));
 	}
 	
-	/*
-	 * (non-Javadoc)
-	 * @see java.lang.Object#hashCode()
-	 */
 	@Override
 	public int hashCode() {
 	
-		final int prime = 31;
-		int result = super.hashCode();
-		result = (prime * result) + Arrays.hashCode(value);
-		return result;
+		return (31 * super.hashCode()) + Arrays.hashCode(value);
 	}
 	
-	/*
-	 * (non-Javadoc)
-	 * @see java.lang.Object#equals(java.lang.Object)
-	 */
 	@Override
 	public boolean equals(final Object obj) {
 	
 		if (this == obj) { return true; }
 		if (!super.equals(obj)) { return false; }
 		if (!(obj instanceof LongArrayTag)) { return false; }
-		final LongArrayTag other = (LongArrayTag) obj;
-		if (!Arrays.equals(value, other.value)) { return false; }
-		return true;
+		return Arrays.equals(value, ((LongArrayTag) obj).value);
 	}
 	
 }

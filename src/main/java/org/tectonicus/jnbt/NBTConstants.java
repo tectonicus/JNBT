@@ -38,6 +38,7 @@ package org.tectonicus.jnbt;
 //@formatter:on
 
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 /**
  * A class which holds constant values.
@@ -57,7 +58,7 @@ public final class NBTConstants {
 	 * Multilingual Plane, such as emoji.
 	 * </p>
 	 */
-	public static final Charset CHARSET = Charset.forName("UTF-8");
+	public static final Charset CHARSET = StandardCharsets.UTF_8;
 	
 	/**
 	 * Tag type constants.

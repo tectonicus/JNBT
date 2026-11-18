@@ -88,27 +88,15 @@ public final class CompoundTag extends Tag {
 	@Override
 	public String toString() {
 	
-		final String name = getName();
-		String append = "";
-		if ((name != null) && !name.equals("")) {
-			append = "(\"" + getName() + "\")";
-		}
 		final StringBuilder bldr = new StringBuilder();
-		bldr.append("TAG_Compound" + append + ": " + value.size()
-				+ " entries\r\n{\r\n");
-		for (final Map.Entry<String, Tag> entry : value.entrySet()) {
-			bldr.append("   "
-					+ entry.getValue().toString().replaceAll("\r\n", "\r\n   ")
-					+ "\r\n");
+		bldr.append(describe()).append(": ").append(value.size()).append(" entries\n{\n");
+		for (final Tag tag : value.values()) {
+			bldr.append("   ").append(tag.toString().replace("\n", "\n   ")).append('\n');
 		}
 		bldr.append("}");
 		return bldr.toString();
 	}
 	
-	/*
-	 * (non-Javadoc)
-	 * @see java.lang.Object#hashCode()
-	 */
 	@Override
 	public int hashCode() {
 	
@@ -118,10 +106,6 @@ public final class CompoundTag extends Tag {
 		return result;
 	}
 	
-	/*
-	 * (non-Javadoc)
-	 * @see java.lang.Object#equals(java.lang.Object)
-	 */
 	@Override
 	public boolean equals(final Object obj) {
 	

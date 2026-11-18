@@ -57,27 +57,15 @@ import java.util.zip.InflaterInputStream;
  * </p>
  * 
  * <p>
- * The NBT format was created by Markus Persson, and the specification may be
- * found at <a href="http://www.minecraft.net/docs/NBT.txt">
- * http://www.minecraft.net/docs/NBT.txt</a>.
+ * The NBT format was created by Markus Persson. It is described at
+ * <a href="https://minecraft.wiki/w/NBT_format">https://minecraft.wiki/w/NBT_format</a>.
  * </p>
  * 
  * @author Graham Edgecombe
  * 
  */
 public final class NBTInputStream implements Closeable {
-	/**
-	 * The compression applied to an NBT stream.
-	 */
-	public static enum Compression {
-		/** The stream is not compressed. */
-		None,
-		/** The stream is GZip-compressed. */
-		Gzip,
-		/** The stream is zlib (Deflate) compressed. */
-		Deflate;
-	}
-	/**
+/**
 	 * The data input stream.
 	 */
 	private final DataInputStream is;
@@ -95,7 +83,7 @@ public final class NBTInputStream implements Closeable {
 	 *             if an I/O error occurs.
 	 */
 	public NBTInputStream(InputStream is, final boolean gzipped) throws IOException {
-		this(is, gzipped ? Compression.Gzip : Compression.None, NBTReadLimits.DEFAULT);
+		this(is, gzipped ? NBTCompression.GZIP : NBTCompression.NONE, NBTReadLimits.DEFAULT);
 	}
 	
 	/**
@@ -108,7 +96,7 @@ public final class NBTInputStream implements Closeable {
 	 *             if an I/O error occurs.
 	 */
 	public NBTInputStream(final InputStream is) throws IOException {
-		this(is, Compression.Gzip, NBTReadLimits.DEFAULT);
+		this(is, NBTCompression.GZIP, NBTReadLimits.DEFAULT);
 	}
 	
 	/**
@@ -152,7 +140,7 @@ public final class NBTInputStream implements Closeable {
 	 * @throws IOException
 	 *             if an I/O error occurs.
 	 */
-	public NBTInputStream(InputStream is, Compression compression) throws IOException {
+	public NBTInputStream(InputStream is, NBTCompression compression) throws IOException {
 		this(is, compression, NBTReadLimits.DEFAULT);
 	}
 
@@ -170,15 +158,15 @@ public final class NBTInputStream implements Closeable {
 	 *             if an I/O error occurs, such as a missing or corrupt GZip
 	 *             header. The input stream is closed before this is thrown.
 	 */
-	public NBTInputStream(InputStream input, Compression compression,
+	public NBTInputStream(InputStream input, NBTCompression compression,
 			NBTReadLimits limits) throws IOException {
 		if (input == null || compression == null || limits == null) {
 			throw new NullPointerException("Input, compression and limits are required.");
 		}
 		try {
-			if (compression == Compression.Gzip) {
+			if (compression == NBTCompression.GZIP) {
 				input = new GZIPInputStream(input);
-			} else if (compression == Compression.Deflate) {
+			} else if (compression == NBTCompression.DEFLATE) {
 				input = new InflaterInputStream(input);
 			}
 		} catch (IOException | RuntimeException e) {
