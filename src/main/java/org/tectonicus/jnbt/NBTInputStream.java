@@ -167,25 +167,40 @@ public final class NBTInputStream implements Closeable {
 	 * @param limits
 	 *            The resource limits to enforce while reading.
 	 * @throws IOException
-	 *             if an I/O error occurs.
+	 *             if an I/O error occurs, such as a missing or corrupt GZip
+	 *             header. The input stream is closed before this is thrown.
 	 */
 	public NBTInputStream(InputStream input, Compression compression,
 			NBTReadLimits limits) throws IOException {
 		if (input == null || compression == null || limits == null) {
 			throw new NullPointerException("Input, compression and limits are required.");
 		}
-		if (compression == Compression.Gzip) {
-			input = new GZIPInputStream(input);
-		} else if (compression == Compression.Deflate) {
-			input = new InflaterInputStream(input);
+		try {
+			if (compression == Compression.Gzip) {
+				input = new GZIPInputStream(input);
+			} else if (compression == Compression.Deflate) {
+				input = new InflaterInputStream(input);
+			}
+		} catch (IOException | RuntimeException e) {
+			// The stream would otherwise leak: the caller never gets an object to close.
+			try {
+				input.close();
+			} catch (IOException suppressed) {
+				e.addSuppressed(suppressed);
+			}
+			throw e;
 		}
 		this.is = new DataInputStream(input);
 		this.limits = limits;
 	}
-	
+
 	/**
 	 * Reads an NBT tag from the stream.
-	 * 
+	 * <p>
+	 * If a compound contains the same name more than once, the last entry
+	 * wins and keeps the position of the first, as in Minecraft.
+	 * </p>
+	 *
 	 * @return The tag that was read.
 	 * @throws IOException
 	 *             if an I/O error occurs.

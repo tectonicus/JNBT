@@ -89,8 +89,8 @@ public final class NBTOutputStream implements Closeable {
 	 *             if an I/O error occurs.
 	 */
 	public NBTOutputStream(final OutputStream os) throws IOException {
-	
-		this.os = new DataOutputStream(new GZIPOutputStream(os));
+
+		this(os, Compression.Gzip);
 	}
 
 	
@@ -105,11 +105,8 @@ public final class NBTOutputStream implements Closeable {
 	 * @throws IOException
 	 *             if an I/O error occurs.
 	 */
-	public NBTOutputStream(OutputStream os, final boolean gzipped) throws IOException {
-		if (gzipped) {
-			os = new GZIPOutputStream(os);
-		}
-		this.os = new DataOutputStream(os);
+	public NBTOutputStream(final OutputStream os, final boolean gzipped) throws IOException {
+		this(os, gzipped ? Compression.Gzip : Compression.None);
 	}
 
 	/**
@@ -121,16 +118,27 @@ public final class NBTOutputStream implements Closeable {
 	 * @param compression
 	 *            The compression to apply to the stream.
 	 * @throws IOException
-	 *             if an I/O error occurs.
+	 *             if an I/O error occurs, such as failing to write the GZip
+	 *             header. The output stream is closed before this is thrown.
 	 */
 	public NBTOutputStream(OutputStream output, Compression compression) throws IOException {
 		if (output == null || compression == null) {
 			throw new NullPointerException("Output and compression are required.");
 		}
-		if (compression == Compression.Gzip) {
-			output = new GZIPOutputStream(output);
-		} else if (compression == Compression.Deflate) {
-			output = new DeflaterOutputStream(output);
+		try {
+			if (compression == Compression.Gzip) {
+				output = new GZIPOutputStream(output);
+			} else if (compression == Compression.Deflate) {
+				output = new DeflaterOutputStream(output);
+			}
+		} catch (IOException | RuntimeException e) {
+			// The stream would otherwise leak: the caller never gets an object to close.
+			try {
+				output.close();
+			} catch (IOException suppressed) {
+				e.addSuppressed(suppressed);
+			}
+			throw e;
 		}
 		this.os = new DataOutputStream(output);
 	}

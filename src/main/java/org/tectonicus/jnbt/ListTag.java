@@ -67,7 +67,9 @@ public final class ListTag extends Tag {
 	 * @param type
 	 *            The type of item in the list.
 	 * @param value
-	 *            The value.
+	 *            The value. NBT list elements are unnamed, so any element
+	 *            with a name is stored as an unnamed copy, matching what is
+	 *            read back from a stream.
 	 */
 	public ListTag(final String name, final Class<? extends Tag> type, final List<Tag> value) {
 	
@@ -84,13 +86,38 @@ public final class ListTag extends Tag {
 		if (type == EndTag.class && !value.isEmpty()) {
 			throw new IllegalArgumentException("TAG_End is only valid as the type of an empty list.");
 		}
+		final List<Tag> copy = new ArrayList<Tag>(value.size());
 		for (final Tag tag : value) {
 			if (tag == null || tag.getClass() != type) {
 				throw new IllegalArgumentException("List elements must all have type " + type.getName() + ".");
 			}
+			copy.add(unnamed(tag));
 		}
 		this.type = type;
-		this.value = Collections.unmodifiableList(new ArrayList<Tag>(value));
+		this.value = Collections.unmodifiableList(copy);
+	}
+
+	/**
+	 * Returns the tag itself if it has no name, or else an unnamed copy of it.
+	 * The NBT format stores no names for list elements.
+	 */
+	private static Tag unnamed(final Tag tag) {
+		if (tag.getName().isEmpty()) {
+			return tag;
+		}
+		if (tag instanceof ByteTag t) { return new ByteTag("", t.getValue()); }
+		if (tag instanceof ShortTag t) { return new ShortTag("", t.getValue()); }
+		if (tag instanceof IntTag t) { return new IntTag("", t.getValue()); }
+		if (tag instanceof LongTag t) { return new LongTag("", t.getValue()); }
+		if (tag instanceof FloatTag t) { return new FloatTag("", t.getValue()); }
+		if (tag instanceof DoubleTag t) { return new DoubleTag("", t.getValue()); }
+		if (tag instanceof ByteArrayTag t) { return new ByteArrayTag("", t.getValue()); }
+		if (tag instanceof StringTag t) { return new StringTag("", t.getValue()); }
+		if (tag instanceof ListTag t) { return new ListTag("", t.getType(), t.getValue()); }
+		if (tag instanceof CompoundTag t) { return new CompoundTag("", t.getValue()); }
+		if (tag instanceof IntArrayTag t) { return new IntArrayTag("", t.getValue()); }
+		if (tag instanceof LongArrayTag t) { return new LongArrayTag("", t.getValue()); }
+		throw new IllegalArgumentException("Unsupported NBT tag type: " + tag.getClass().getName() + ".");
 	}
 	
 	/**

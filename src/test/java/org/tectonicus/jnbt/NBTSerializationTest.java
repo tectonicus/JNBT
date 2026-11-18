@@ -3,11 +3,14 @@ package org.tectonicus.jnbt;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -75,6 +78,71 @@ class NBTSerializationTest {
 		assertThrows(NullPointerException.class, () -> new ByteArrayTag("b", null));
 		assertThrows(NullPointerException.class, () -> new IntArrayTag("i", null));
 		assertThrows(NullPointerException.class, () -> new LongArrayTag("l", null));
+	}
+
+	@Test
+	void listElementsAreStoredUnnamedAndRoundTrip() throws Exception {
+		final Map<String, Tag> child = new LinkedHashMap<String, Tag>();
+		child.put("x", new IntTag("x", 1));
+		final ListTag list = new ListTag("list", CompoundTag.class,
+				Arrays.<Tag>asList(new CompoundTag("named", child)));
+		assertEquals("", list.getValue().get(0).getName());
+		assertEquals(child, ((CompoundTag) list.getValue().get(0)).getValue());
+		assertEquals(list, read(write(list, NBTOutputStream.Compression.None),
+				NBTInputStream.Compression.None));
+
+		final ListTag ints = new ListTag("ints", IntTag.class,
+				Arrays.<Tag>asList(new IntTag("a", 1), new IntTag("", 2)));
+		assertEquals(new ListTag("ints", IntTag.class,
+				Arrays.<Tag>asList(new IntTag("", 1), new IntTag("", 2))), ints);
+	}
+
+	@Test
+	void duplicateCompoundNamesKeepLastValueAtFirstPosition() throws Exception {
+		final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+		final DataOutputStream out = new DataOutputStream(bytes);
+		out.writeByte(NBTConstants.TYPE_COMPOUND); out.writeUTF("");
+		out.writeByte(NBTConstants.TYPE_INT); out.writeUTF("a"); out.writeInt(1);
+		out.writeByte(NBTConstants.TYPE_INT); out.writeUTF("b"); out.writeInt(2);
+		out.writeByte(NBTConstants.TYPE_INT); out.writeUTF("a"); out.writeInt(3);
+		out.writeByte(NBTConstants.TYPE_END);
+		final CompoundTag compound = (CompoundTag) read(bytes.toByteArray(),
+				NBTInputStream.Compression.None);
+		assertEquals(Arrays.asList("a", "b"), new ArrayList<String>(compound.getValue().keySet()));
+		assertEquals(new IntTag("a", 3), compound.getValue().get("a"));
+	}
+
+	@Test
+	void tagNamesAreHeldToTheStringLimit() {
+		assertThrows(IOException.class, () -> read(INT_FIXTURE, NBTInputStream.Compression.None,
+				new NBTReadLimits(5, 0, 10, 10)));
+	}
+
+	@Test
+	void constructorsCloseTheStreamWhenSetupFails() {
+		final boolean[] closed = { false };
+		final InputStream notGzip = new ByteArrayInputStream(new byte[] { 1, 2, 3 }) {
+			@Override
+			public void close() { closed[0] = true; }
+		};
+		assertThrows(IOException.class, () -> new NBTInputStream(notGzip));
+		assertTrue(closed[0]);
+
+		closed[0] = false;
+		final OutputStream failing = new OutputStream() {
+			@Override
+			public void write(final int b) throws IOException { throw new IOException("disk full"); }
+
+			@Override
+			public void write(final byte[] b, final int off, final int len) throws IOException {
+				throw new IOException("disk full");
+			}
+
+			@Override
+			public void close() { closed[0] = true; }
+		};
+		assertThrows(IOException.class, () -> new NBTOutputStream(failing));
+		assertTrue(closed[0]);
 	}
 
 	@Test
