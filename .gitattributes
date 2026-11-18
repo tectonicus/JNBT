@@ -1,0 +1,8 @@
+# Store text files with LF line endings; checkouts get the platform's native endings.
+* text=auto
+
+# The Gradle wrapper scripts need their native line endings on every platform.
+/gradlew text eol=lf
+*.bat text eol=crlf
+
+*.jar binary
