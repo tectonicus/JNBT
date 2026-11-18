@@ -34,7 +34,7 @@ tasks.withType<Javadoc>().configureEach {
 }
 
 tasks.withType<Jar>().configureEach {
-    metaInf { from("LICENSE.TXT") }
+    metaInf { from("LICENSE") }
 }
 
 dependencies {
