@@ -1,4 +1,4 @@
-package org.jnbt;
+package org.tectonicus.jnbt;
 
 //@formatter:off
 
@@ -38,17 +38,17 @@ package org.jnbt;
 //@formatter:on
 
 /**
- * The <code>TAG_Byte</code> tag.
+ * The <code>TAG_Long</code> tag.
  * 
  * @author Graham Edgecombe
  * 
  */
-public final class ByteTag extends Tag {
+public final class LongTag extends Tag {
 	
 	/**
 	 * The value.
 	 */
-	private final byte value;
+	private final long value;
 	
 	/**
 	 * Creates the tag.
@@ -58,14 +58,14 @@ public final class ByteTag extends Tag {
 	 * @param value
 	 *            The value.
 	 */
-	public ByteTag(final String name, final byte value) {
+	public LongTag(final String name, final long value) {
 	
 		super(name);
 		this.value = value;
 	}
 	
 	@Override
-	public Byte getValue() {
+	public Long getValue() {
 	
 		return value;
 	}
@@ -78,7 +78,7 @@ public final class ByteTag extends Tag {
 		if ((name != null) && !name.equals("")) {
 			append = "(\"" + getName() + "\")";
 		}
-		return "TAG_Byte" + append + ": " + value;
+		return "TAG_Long" + append + ": " + value;
 	}
 	
 	/*
@@ -90,7 +90,7 @@ public final class ByteTag extends Tag {
 	
 		final int prime = 31;
 		int result = super.hashCode();
-		result = (prime * result) + value;
+		result = (prime * result) + (int) (value ^ (value >>> 32));
 		return result;
 	}
 	
@@ -103,8 +103,8 @@ public final class ByteTag extends Tag {
 	
 		if (this == obj) { return true; }
 		if (!super.equals(obj)) { return false; }
-		if (!(obj instanceof ByteTag)) { return false; }
-		final ByteTag other = (ByteTag) obj;
+		if (!(obj instanceof LongTag)) { return false; }
+		final LongTag other = (LongTag) obj;
 		if (value != other.value) { return false; }
 		return true;
 	}

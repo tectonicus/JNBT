@@ -1,4 +1,4 @@
-package org.jnbt;
+package org.tectonicus.jnbt;
 
 //@formatter:off
 
@@ -37,61 +37,46 @@ package org.jnbt;
 
 //@formatter:on
 
-import java.util.Collections;
-import java.util.Map;
-
 /**
- * The <code>TAG_Compound</code> tag.
+ * Represents a single NBT tag.
  * 
  * @author Graham Edgecombe
  * 
  */
-public final class CompoundTag extends Tag {
+public abstract class Tag {
 	
 	/**
-	 * The value.
+	 * The name of this tag.
 	 */
-	private final Map<String, Tag> value;
+	private final String name;
 	
 	/**
-	 * Creates the tag.
+	 * Creates the tag with the specified name.
 	 * 
 	 * @param name
 	 *            The name.
-	 * @param value
-	 *            The value.
 	 */
-	public CompoundTag(final String name, final Map<String, Tag> value) {
+	public Tag(final String name) {
 	
-		super(name);
-		this.value = Collections.unmodifiableMap(value);
+		this.name = name;
 	}
 	
-	@Override
-	public Map<String, Tag> getValue() {
+	/**
+	 * Gets the name of this tag.
+	 * 
+	 * @return The name of this tag.
+	 */
+	public final String getName() {
 	
-		return value;
+		return name;
 	}
 	
-	@Override
-	public String toString() {
-	
-		final String name = getName();
-		String append = "";
-		if ((name != null) && !name.equals("")) {
-			append = "(\"" + getName() + "\")";
-		}
-		final StringBuilder bldr = new StringBuilder();
-		bldr.append("TAG_Compound" + append + ": " + value.size()
-				+ " entries\r\n{\r\n");
-		for (final Map.Entry<String, Tag> entry : value.entrySet()) {
-			bldr.append("   "
-					+ entry.getValue().toString().replaceAll("\r\n", "\r\n   ")
-					+ "\r\n");
-		}
-		bldr.append("}");
-		return bldr.toString();
-	}
+	/**
+	 * Gets the value of this tag.
+	 * 
+	 * @return The value of this tag.
+	 */
+	public abstract Object getValue();
 	
 	/*
 	 * (non-Javadoc)
@@ -101,8 +86,8 @@ public final class CompoundTag extends Tag {
 	public int hashCode() {
 	
 		final int prime = 31;
-		int result = super.hashCode();
-		result = (prime * result) + ((value == null) ? 0 : value.hashCode());
+		int result = 1;
+		result = (prime * result) + ((name == null) ? 0 : name.hashCode());
 		return result;
 	}
 	
@@ -114,12 +99,12 @@ public final class CompoundTag extends Tag {
 	public boolean equals(final Object obj) {
 	
 		if (this == obj) { return true; }
-		if (!super.equals(obj)) { return false; }
-		if (!(obj instanceof CompoundTag)) { return false; }
-		final CompoundTag other = (CompoundTag) obj;
-		if (value == null) {
-			if (other.value != null) { return false; }
-		} else if (!value.equals(other.value)) { return false; }
+		if (obj == null) { return false; }
+		if (!(obj instanceof Tag)) { return false; }
+		final Tag other = (Tag) obj;
+		if (name == null) {
+			if (other.name != null) { return false; }
+		} else if (!name.equals(other.name)) { return false; }
 		return true;
 	}
 	

@@ -1,4 +1,4 @@
-package org.jnbt;
+package org.tectonicus.jnbt;
 
 //@formatter:off
 

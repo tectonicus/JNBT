@@ -1,4 +1,4 @@
-package org.jnbt;
+package org.tectonicus.jnbt;
 
 //@formatter:off
 
@@ -43,6 +43,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.List;
 import java.util.zip.GZIPOutputStream;
+import java.util.zip.DeflaterOutputStream;
 
 
 /**
@@ -61,6 +62,17 @@ import java.util.zip.GZIPOutputStream;
  * 
  */
 public final class NBTOutputStream implements Closeable {
+	/**
+	 * The compression to apply to the written stream.
+	 */
+	public static enum Compression {
+		/** Write the stream uncompressed. */
+		None,
+		/** GZip-compress the stream. */
+		Gzip,
+		/** zlib (Deflate) compress the stream. */
+		Deflate
+	}
 	
 	/**
 	 * The output stream.
@@ -99,6 +111,29 @@ public final class NBTOutputStream implements Closeable {
 		}
 		this.os = new DataOutputStream(os);
 	}
+
+	/**
+	 * Creates a new <code>NBTOutputStream</code>, which will write data to the
+	 * specified underlying output stream with the given compression.
+	 *
+	 * @param output
+	 *            The output stream.
+	 * @param compression
+	 *            The compression to apply to the stream.
+	 * @throws IOException
+	 *             if an I/O error occurs.
+	 */
+	public NBTOutputStream(OutputStream output, Compression compression) throws IOException {
+		if (output == null || compression == null) {
+			throw new NullPointerException("Output and compression are required.");
+		}
+		if (compression == Compression.Gzip) {
+			output = new GZIPOutputStream(output);
+		} else if (compression == Compression.Deflate) {
+			output = new DeflaterOutputStream(output);
+		}
+		this.os = new DataOutputStream(output);
+	}
 	
 	/**
 	 * Writes a tag.
@@ -113,13 +148,16 @@ public final class NBTOutputStream implements Closeable {
 		final int type = NBTUtils.getTypeCode(tag.getClass());
 		final String name = tag.getName();
 		final byte[] nameBytes = name.getBytes(NBTConstants.CHARSET);
+		if (nameBytes.length > 65535) {
+			throw new IOException("[JNBT] Tag name exceeds the 65535 byte NBT limit.");
+		}
+		if (type == NBTConstants.TYPE_END) {
+			throw new IOException("[JNBT] Named TAG_End not permitted.");
+		}
 		
 		os.writeByte(type);
 		os.writeShort(nameBytes.length);
 		os.write(nameBytes);
-		
-		if (type == NBTConstants.TYPE_END) { throw new IOException(
-				"[JNBT] Named TAG_End not permitted."); }
 		
 		writeTagPayload(tag);
 	}
@@ -258,6 +296,9 @@ public final class NBTOutputStream implements Closeable {
 	private void writeStringTagPayload(final StringTag tag) throws IOException {
 	
 		final byte[] bytes = tag.getValue().getBytes(NBTConstants.CHARSET);
+		if (bytes.length > 65535) {
+			throw new IOException("[JNBT] String value exceeds the 65535 byte NBT limit.");
+		}
 		os.writeShort(bytes.length);
 		os.write(bytes);
 	}

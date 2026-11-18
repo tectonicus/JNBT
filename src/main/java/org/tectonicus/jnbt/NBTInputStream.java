@@ -1,4 +1,4 @@
-package org.jnbt;
+package org.tectonicus.jnbt;
 
 //@formatter:off
 
@@ -65,13 +65,22 @@ import java.util.zip.InflaterInputStream;
  * 
  */
 public final class NBTInputStream implements Closeable {
+	/**
+	 * The compression applied to an NBT stream.
+	 */
 	public static enum Compression {
-	    Gzip, Deflate;
+		/** The stream is not compressed. */
+		None,
+		/** The stream is GZip-compressed. */
+		Gzip,
+		/** The stream is zlib (Deflate) compressed. */
+		Deflate;
 	}
 	/**
 	 * The data input stream.
 	 */
 	private final DataInputStream is;
+	private final NBTReadLimits limits;
 	
 	/**
 	 * Creates a new <code>NBTInputStream</code>, which will source its data
@@ -85,10 +94,7 @@ public final class NBTInputStream implements Closeable {
 	 *             if an I/O error occurs.
 	 */
 	public NBTInputStream(InputStream is, final boolean gzipped) throws IOException {
-		if (gzipped) {
-			is = new GZIPInputStream(is);
-		}
-		this.is = new DataInputStream(is);
+		this(is, gzipped ? Compression.Gzip : Compression.None, NBTReadLimits.DEFAULT);
 	}
 	
 	/**
@@ -101,24 +107,79 @@ public final class NBTInputStream implements Closeable {
 	 *             if an I/O error occurs.
 	 */
 	public NBTInputStream(final InputStream is) throws IOException {
-		this.is = new DataInputStream(new GZIPInputStream(is));
+		this(is, Compression.Gzip, NBTReadLimits.DEFAULT);
 	}
 	
-	//TODO: comment this.  supports raw Gziped data.
-	// author: ensirius
+	/**
+	 * Creates a new <code>NBTInputStream</code> that reads from an existing
+	 * data input stream as-is, applying no decompression, with the
+	 * {@linkplain NBTReadLimits#DEFAULT default read limits}.
+	 *
+	 * @param is
+	 *            The data input stream.
+	 */
 	public NBTInputStream(final DataInputStream is) {
-                this.is = is;
-        }
-	
-	// used by tectonicus
-	public NBTInputStream(InputStream is, Compression compression) throws IOException {
-		if (compression == Compression.Gzip) {
-			this.is = new DataInputStream(new GZIPInputStream(is));
-		} else if(compression == Compression.Deflate) {
-			this.is = new DataInputStream(new InflaterInputStream(is));
-		} else {
-			throw new IOException("Unknown compression type:" + compression);
+		this(is, NBTReadLimits.DEFAULT);
+	}
+
+	/**
+	 * Creates a new <code>NBTInputStream</code> that reads from an existing
+	 * data input stream as-is, applying no decompression.
+	 *
+	 * @param is
+	 *            The data input stream.
+	 * @param limits
+	 *            The resource limits to enforce while reading.
+	 */
+	public NBTInputStream(final DataInputStream is, final NBTReadLimits limits) {
+		if (is == null || limits == null) {
+			throw new NullPointerException("Input and limits are required.");
 		}
+		this.is = is;
+		this.limits = limits;
+	}
+
+	/**
+	 * Creates a new <code>NBTInputStream</code> that reads from the specified
+	 * input stream with the given compression and the
+	 * {@linkplain NBTReadLimits#DEFAULT default read limits}.
+	 *
+	 * @param is
+	 *            The input stream.
+	 * @param compression
+	 *            The compression applied to the stream.
+	 * @throws IOException
+	 *             if an I/O error occurs.
+	 */
+	public NBTInputStream(InputStream is, Compression compression) throws IOException {
+		this(is, compression, NBTReadLimits.DEFAULT);
+	}
+
+	/**
+	 * Creates a new <code>NBTInputStream</code> that reads from the specified
+	 * input stream with the given compression and read limits.
+	 *
+	 * @param input
+	 *            The input stream.
+	 * @param compression
+	 *            The compression applied to the stream.
+	 * @param limits
+	 *            The resource limits to enforce while reading.
+	 * @throws IOException
+	 *             if an I/O error occurs.
+	 */
+	public NBTInputStream(InputStream input, Compression compression,
+			NBTReadLimits limits) throws IOException {
+		if (input == null || compression == null || limits == null) {
+			throw new NullPointerException("Input, compression and limits are required.");
+		}
+		if (compression == Compression.Gzip) {
+			input = new GZIPInputStream(input);
+		} else if (compression == Compression.Deflate) {
+			input = new InflaterInputStream(input);
+		}
+		this.is = new DataInputStream(input);
+		this.limits = limits;
 	}
 	
 	/**
@@ -145,6 +206,9 @@ public final class NBTInputStream implements Closeable {
 	private Tag readTag(final int depth) throws IOException {
 	
 		final int type = is.readByte() & 0xFF;
+		if (type != NBTConstants.TYPE_END) {
+			checkDepth(depth);
+		}
 		
 		String name;
 		if (type != NBTConstants.TYPE_END) {
@@ -198,30 +262,37 @@ public final class NBTInputStream implements Closeable {
 				case NBTConstants.TYPE_DOUBLE :
 					return new DoubleTag(name, is.readDouble());
 				case NBTConstants.TYPE_BYTE_ARRAY :
-					int length = is.readInt();
+					int length = readLength("byte array", limits.getMaxArrayLength());
 					byte[] bytes = new byte[length];
 					is.readFully(bytes);
 					return new ByteArrayTag(name, bytes);
 				case NBTConstants.TYPE_STRING :
-					length = is.readShort();
+					length = is.readShort() & 0xFFFF;
+					checkLength("string", length, limits.getMaxStringBytes());
 					bytes = new byte[length];
 					is.readFully(bytes);
 					return new StringTag(name, new String(bytes,
 							NBTConstants.CHARSET));
 				case NBTConstants.TYPE_LIST :
-					final int childType = is.readByte();
-					length = is.readInt();
+					final int childType = is.readByte() & 0xFF;
+					length = readLength("list", limits.getMaxListLength());
+					final Class<? extends Tag> listType;
+					try {
+						listType = NBTUtils.getTypeClass(childType);
+					} catch (IllegalArgumentException e) {
+						throw new IOException("[JNBT] Invalid list element type: " + childType + ".", e);
+					}
 					
 					final List<Tag> tagList = new ArrayList<Tag>();
 					for (int i = 0; i < length; i++) {
+						checkDepth(depth + 1);
 						final Tag tag = readTagPayload(childType, "", depth + 1);
 						if (tag instanceof EndTag) { throw new IOException(
 								"[JNBT] TAG_End not permitted in a list."); }
 						tagList.add(tag);
 					}
 					
-					return new ListTag(name, NBTUtils.getTypeClass(childType),
-							tagList);
+					return new ListTag(name, listType, tagList);
 				case NBTConstants.TYPE_COMPOUND :
 					final Map<String, Tag> tagMap = new HashMap<String, Tag>();
 					while (true) {
@@ -235,14 +306,14 @@ public final class NBTInputStream implements Closeable {
 					
 					return new CompoundTag(name, tagMap);
 				case NBTConstants.TYPE_INT_ARRAY :
-					length = is.readInt();
+					length = readLength("int array", limits.getMaxArrayLength());
 					final int[] ints = new int[length];
 					for (int i = 0; i < length; i++) {
 						ints[i] = is.readInt();
 					}
 					return new IntArrayTag(name, ints);
 				case NBTConstants.TYPE_LONG_ARRAY :
-					length = is.readInt();
+					length = readLength("long array", limits.getMaxArrayLength());
 					final long[] longs = new long[length];
 					for (int i = 0; i < length; i++) {
 						longs[i] = is.readLong();
@@ -252,6 +323,26 @@ public final class NBTInputStream implements Closeable {
 					throw new IOException("[JNBT] Invalid tag type: " + type
 							+ ".");
 			}
+	}
+
+	private int readLength(final String kind, final int maximum) throws IOException {
+		final int length = is.readInt();
+		checkLength(kind, length, maximum);
+		return length;
+	}
+
+	private void checkLength(final String kind, final int length, final int maximum)
+			throws IOException {
+		if (length < 0 || length > maximum) {
+			throw new IOException("[JNBT] Invalid " + kind + " length: " + length
+					+ " (maximum " + maximum + ").");
+		}
+	}
+
+	private void checkDepth(final int depth) throws IOException {
+		if (depth > limits.getMaxDepth()) {
+			throw new IOException("[JNBT] Maximum tag depth exceeded: " + depth + ".");
+		}
 	}
 	
 	@Override

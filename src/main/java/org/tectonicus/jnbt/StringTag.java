@@ -1,4 +1,4 @@
-package org.jnbt;
+package org.tectonicus.jnbt;
 
 //@formatter:off
 
@@ -38,17 +38,17 @@ package org.jnbt;
 //@formatter:on
 
 /**
- * The <code>TAG_Float</code> tag.
+ * The <code>TAG_String</code> tag.
  * 
  * @author Graham Edgecombe
  * 
  */
-public final class FloatTag extends Tag {
+public final class StringTag extends Tag {
 	
 	/**
 	 * The value.
 	 */
-	private final float value;
+	private final String value;
 	
 	/**
 	 * Creates the tag.
@@ -58,14 +58,14 @@ public final class FloatTag extends Tag {
 	 * @param value
 	 *            The value.
 	 */
-	public FloatTag(final String name, final float value) {
+	public StringTag(final String name, final String value) {
 	
 		super(name);
 		this.value = value;
 	}
 	
 	@Override
-	public Float getValue() {
+	public String getValue() {
 	
 		return value;
 	}
@@ -78,7 +78,7 @@ public final class FloatTag extends Tag {
 		if ((name != null) && !name.equals("")) {
 			append = "(\"" + getName() + "\")";
 		}
-		return "TAG_Float" + append + ": " + value;
+		return "TAG_String" + append + ": " + value;
 	}
 	
 	/*
@@ -90,7 +90,7 @@ public final class FloatTag extends Tag {
 	
 		final int prime = 31;
 		int result = super.hashCode();
-		result = (prime * result) + Float.floatToIntBits(value);
+		result = (prime * result) + ((value == null) ? 0 : value.hashCode());
 		return result;
 	}
 	
@@ -103,9 +103,11 @@ public final class FloatTag extends Tag {
 	
 		if (this == obj) { return true; }
 		if (!super.equals(obj)) { return false; }
-		if (!(obj instanceof FloatTag)) { return false; }
-		final FloatTag other = (FloatTag) obj;
-		if (Float.floatToIntBits(value) != Float.floatToIntBits(other.value)) { return false; }
+		if (!(obj instanceof StringTag)) { return false; }
+		final StringTag other = (StringTag) obj;
+		if (value == null) {
+			if (other.value != null) { return false; }
+		} else if (!value.equals(other.value)) { return false; }
 		return true;
 	}
 	

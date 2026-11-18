@@ -1,4 +1,6 @@
-package org.jnbt;
+package org.tectonicus.jnbt;
+
+import java.util.Arrays;
 
 //@formatter:off
 
@@ -37,34 +39,80 @@ package org.jnbt;
 
 //@formatter:on
 
-import java.nio.charset.Charset;
-
 /**
- * A class which holds constant values.
+ * The <code>TAG_Long_Array</code> tag.
  * 
- * @author Graham Edgecombe, Jocopa3
+ * @author Charlie Birks
  * 
  */
-public final class NBTConstants {
+public final class LongArrayTag extends Tag {
 	
 	/**
-	 * The character set used by NBT (UTF-8).
+	 * The value.
 	 */
-	public static final Charset CHARSET = Charset.forName("UTF-8");
+	private final long[] value;
 	
 	/**
-	 * Tag type constants.
+	 * Creates the tag.
+	 * 
+	 * @param name
+	 *            The name.
+	 * @param value
+	 *            The value.
 	 */
-	public static final int TYPE_END = 0, TYPE_BYTE = 1, TYPE_SHORT = 2,
-			TYPE_INT = 3, TYPE_LONG = 4, TYPE_FLOAT = 5, TYPE_DOUBLE = 6,
-			TYPE_BYTE_ARRAY = 7, TYPE_STRING = 8, TYPE_LIST = 9,
-			TYPE_COMPOUND = 10, TYPE_INT_ARRAY = 11, TYPE_LONG_ARRAY = 12;
+	public LongArrayTag(final String name, final long[] value) {
 	
-	/**
-	 * Default private constructor.
+		super(name);
+		this.value = Arrays.copyOf(value, value.length);
+	}
+	
+	@Override
+	public long[] getValue() {
+	
+		return Arrays.copyOf(value, value.length);
+	}
+	
+	@Override
+	public String toString() {
+	
+		final StringBuilder integers = new StringBuilder();
+		for (final long l : value) {
+			integers.append(l).append(" ");
+		}
+		final String name = getName();
+		String append = "";
+		if ((name != null) && !name.equals("")) {
+			append = "(\"" + getName() + "\")";
+		}
+		return "TAG_Long_Array" + append + ": " + integers.toString();
+	}
+	
+	/*
+	 * (non-Javadoc)
+	 * @see java.lang.Object#hashCode()
 	 */
-	private NBTConstants() {
+	@Override
+	public int hashCode() {
 	
+		final int prime = 31;
+		int result = super.hashCode();
+		result = (prime * result) + Arrays.hashCode(value);
+		return result;
+	}
+	
+	/*
+	 * (non-Javadoc)
+	 * @see java.lang.Object#equals(java.lang.Object)
+	 */
+	@Override
+	public boolean equals(final Object obj) {
+	
+		if (this == obj) { return true; }
+		if (!super.equals(obj)) { return false; }
+		if (!(obj instanceof LongArrayTag)) { return false; }
+		final LongArrayTag other = (LongArrayTag) obj;
+		if (!Arrays.equals(value, other.value)) { return false; }
+		return true;
 	}
 	
 }

@@ -1,4 +1,4 @@
-package org.jnbt;
+package org.tectonicus.jnbt;
 
 //@formatter:off
 
@@ -38,45 +38,48 @@ package org.jnbt;
 //@formatter:on
 
 /**
- * Represents a single NBT tag.
+ * The <code>TAG_Int</code> tag.
  * 
  * @author Graham Edgecombe
  * 
  */
-public abstract class Tag {
+public final class IntTag extends Tag {
 	
 	/**
-	 * The name of this tag.
+	 * The value.
 	 */
-	private final String name;
+	private final int value;
 	
 	/**
-	 * Creates the tag with the specified name.
+	 * Creates the tag.
 	 * 
 	 * @param name
 	 *            The name.
+	 * @param value
+	 *            The value.
 	 */
-	public Tag(final String name) {
+	public IntTag(final String name, final int value) {
 	
-		this.name = name;
+		super(name);
+		this.value = value;
 	}
 	
-	/**
-	 * Gets the name of this tag.
-	 * 
-	 * @return The name of this tag.
-	 */
-	public final String getName() {
+	@Override
+	public Integer getValue() {
 	
-		return name;
+		return value;
 	}
 	
-	/**
-	 * Gets the value of this tag.
-	 * 
-	 * @return The value of this tag.
-	 */
-	public abstract Object getValue();
+	@Override
+	public String toString() {
+	
+		final String name = getName();
+		String append = "";
+		if ((name != null) && !name.equals("")) {
+			append = "(\"" + getName() + "\")";
+		}
+		return "TAG_Int" + append + ": " + value;
+	}
 	
 	/*
 	 * (non-Javadoc)
@@ -86,8 +89,8 @@ public abstract class Tag {
 	public int hashCode() {
 	
 		final int prime = 31;
-		int result = 1;
-		result = (prime * result) + ((name == null) ? 0 : name.hashCode());
+		int result = super.hashCode();
+		result = (prime * result) + value;
 		return result;
 	}
 	
@@ -99,12 +102,10 @@ public abstract class Tag {
 	public boolean equals(final Object obj) {
 	
 		if (this == obj) { return true; }
-		if (obj == null) { return false; }
-		if (!(obj instanceof Tag)) { return false; }
-		final Tag other = (Tag) obj;
-		if (name == null) {
-			if (other.name != null) { return false; }
-		} else if (!name.equals(other.name)) { return false; }
+		if (!super.equals(obj)) { return false; }
+		if (!(obj instanceof IntTag)) { return false; }
+		final IntTag other = (IntTag) obj;
+		if (value != other.value) { return false; }
 		return true;
 	}
 	

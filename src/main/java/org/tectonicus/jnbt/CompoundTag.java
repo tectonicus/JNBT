@@ -1,4 +1,4 @@
-package org.jnbt;
+package org.tectonicus.jnbt;
 
 //@formatter:off
 
@@ -37,18 +37,22 @@ package org.jnbt;
 
 //@formatter:on
 
+import java.util.Collections;
+import java.util.Map;
+import java.util.LinkedHashMap;
+
 /**
- * The <code>TAG_Long</code> tag.
+ * The <code>TAG_Compound</code> tag.
  * 
  * @author Graham Edgecombe
  * 
  */
-public final class LongTag extends Tag {
+public final class CompoundTag extends Tag {
 	
 	/**
 	 * The value.
 	 */
-	private final long value;
+	private final Map<String, Tag> value;
 	
 	/**
 	 * Creates the tag.
@@ -58,14 +62,25 @@ public final class LongTag extends Tag {
 	 * @param value
 	 *            The value.
 	 */
-	public LongTag(final String name, final long value) {
+	public CompoundTag(final String name, final Map<String, Tag> value) {
 	
 		super(name);
-		this.value = value;
+		if (value == null) {
+			throw new NullPointerException("Compound value is required.");
+		}
+		final Map<String, Tag> copy = new LinkedHashMap<String, Tag>();
+		for (final Map.Entry<String, Tag> entry : value.entrySet()) {
+			if (entry.getKey() == null || entry.getValue() == null
+					|| !entry.getKey().equals(entry.getValue().getName())) {
+				throw new IllegalArgumentException("Compound keys must match non-null child tag names.");
+			}
+			copy.put(entry.getKey(), entry.getValue());
+		}
+		this.value = Collections.unmodifiableMap(copy);
 	}
 	
 	@Override
-	public Long getValue() {
+	public Map<String, Tag> getValue() {
 	
 		return value;
 	}
@@ -78,7 +93,16 @@ public final class LongTag extends Tag {
 		if ((name != null) && !name.equals("")) {
 			append = "(\"" + getName() + "\")";
 		}
-		return "TAG_Long" + append + ": " + value;
+		final StringBuilder bldr = new StringBuilder();
+		bldr.append("TAG_Compound" + append + ": " + value.size()
+				+ " entries\r\n{\r\n");
+		for (final Map.Entry<String, Tag> entry : value.entrySet()) {
+			bldr.append("   "
+					+ entry.getValue().toString().replaceAll("\r\n", "\r\n   ")
+					+ "\r\n");
+		}
+		bldr.append("}");
+		return bldr.toString();
 	}
 	
 	/*
@@ -90,7 +114,7 @@ public final class LongTag extends Tag {
 	
 		final int prime = 31;
 		int result = super.hashCode();
-		result = (prime * result) + (int) (value ^ (value >>> 32));
+		result = (prime * result) + ((value == null) ? 0 : value.hashCode());
 		return result;
 	}
 	
@@ -103,9 +127,11 @@ public final class LongTag extends Tag {
 	
 		if (this == obj) { return true; }
 		if (!super.equals(obj)) { return false; }
-		if (!(obj instanceof LongTag)) { return false; }
-		final LongTag other = (LongTag) obj;
-		if (value != other.value) { return false; }
+		if (!(obj instanceof CompoundTag)) { return false; }
+		final CompoundTag other = (CompoundTag) obj;
+		if (value == null) {
+			if (other.value != null) { return false; }
+		} else if (!value.equals(other.value)) { return false; }
 		return true;
 	}
 	

@@ -1,4 +1,4 @@
-package org.jnbt;
+package org.tectonicus.jnbt;
 
 //@formatter:off
 
@@ -38,34 +38,29 @@ package org.jnbt;
 //@formatter:on
 
 /**
- * The <code>TAG_String</code> tag.
+ * The <code>TAG_End</code> tag.
  * 
  * @author Graham Edgecombe
  * 
  */
-public final class StringTag extends Tag {
+public final class EndTag extends Tag {
 	
 	/**
 	 * The value.
 	 */
-	private final String value;
+	private final Object value = null;
+	
 	
 	/**
 	 * Creates the tag.
-	 * 
-	 * @param name
-	 *            The name.
-	 * @param value
-	 *            The value.
 	 */
-	public StringTag(final String name, final String value) {
+	public EndTag() {
 	
-		super(name);
-		this.value = value;
+		super("");
 	}
 	
 	@Override
-	public String getValue() {
+	public Object getValue() {
 	
 		return value;
 	}
@@ -73,12 +68,7 @@ public final class StringTag extends Tag {
 	@Override
 	public String toString() {
 	
-		final String name = getName();
-		String append = "";
-		if ((name != null) && !name.equals("")) {
-			append = "(\"" + getName() + "\")";
-		}
-		return "TAG_String" + append + ": " + value;
+		return "TAG_End";
 	}
 	
 	/*
@@ -103,8 +93,8 @@ public final class StringTag extends Tag {
 	
 		if (this == obj) { return true; }
 		if (!super.equals(obj)) { return false; }
-		if (!(obj instanceof StringTag)) { return false; }
-		final StringTag other = (StringTag) obj;
+		if (!(obj instanceof EndTag)) { return false; }
+		final EndTag other = (EndTag) obj;
 		if (value == null) {
 			if (other.value != null) { return false; }
 		} else if (!value.equals(other.value)) { return false; }

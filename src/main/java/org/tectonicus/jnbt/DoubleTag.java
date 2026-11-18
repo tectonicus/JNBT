@@ -1,4 +1,4 @@
-package org.jnbt;
+package org.tectonicus.jnbt;
 
 //@formatter:off
 
@@ -38,17 +38,17 @@ package org.jnbt;
 //@formatter:on
 
 /**
- * The <code>TAG_Int</code> tag.
+ * The <code>TAG_Double</code> tag.
  * 
  * @author Graham Edgecombe
  * 
  */
-public final class IntTag extends Tag {
+public final class DoubleTag extends Tag {
 	
 	/**
 	 * The value.
 	 */
-	private final int value;
+	private final double value;
 	
 	/**
 	 * Creates the tag.
@@ -58,14 +58,14 @@ public final class IntTag extends Tag {
 	 * @param value
 	 *            The value.
 	 */
-	public IntTag(final String name, final int value) {
+	public DoubleTag(final String name, final double value) {
 	
 		super(name);
 		this.value = value;
 	}
 	
 	@Override
-	public Integer getValue() {
+	public Double getValue() {
 	
 		return value;
 	}
@@ -78,7 +78,7 @@ public final class IntTag extends Tag {
 		if ((name != null) && !name.equals("")) {
 			append = "(\"" + getName() + "\")";
 		}
-		return "TAG_Int" + append + ": " + value;
+		return "TAG_Double" + append + ": " + value;
 	}
 	
 	/*
@@ -90,7 +90,9 @@ public final class IntTag extends Tag {
 	
 		final int prime = 31;
 		int result = super.hashCode();
-		result = (prime * result) + value;
+		long temp;
+		temp = Double.doubleToLongBits(value);
+		result = (prime * result) + (int) (temp ^ (temp >>> 32));
 		return result;
 	}
 	
@@ -103,9 +105,10 @@ public final class IntTag extends Tag {
 	
 		if (this == obj) { return true; }
 		if (!super.equals(obj)) { return false; }
-		if (!(obj instanceof IntTag)) { return false; }
-		final IntTag other = (IntTag) obj;
-		if (value != other.value) { return false; }
+		if (!(obj instanceof DoubleTag)) { return false; }
+		final DoubleTag other = (DoubleTag) obj;
+		if (Double.doubleToLongBits(value) != Double
+				.doubleToLongBits(other.value)) { return false; }
 		return true;
 	}
 	

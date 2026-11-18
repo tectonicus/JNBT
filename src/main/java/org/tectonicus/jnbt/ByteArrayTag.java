@@ -1,6 +1,4 @@
-package org.jnbt;
-
-import java.util.Arrays;
+package org.tectonicus.jnbt;
 
 //@formatter:off
 
@@ -39,18 +37,21 @@ import java.util.Arrays;
 
 //@formatter:on
 
+import java.util.Arrays;
+import java.util.Objects;
+
 /**
  * The <code>TAG_Byte_Array</code> tag.
  * 
- * @author Jocopa3
+ * @author Graham Edgecombe
  * 
  */
-public final class IntArrayTag extends Tag {
+public final class ByteArrayTag extends Tag {
 	
 	/**
 	 * The value.
 	 */
-	private final int[] value;
+	private final byte[] value;
 	
 	/**
 	 * Creates the tag.
@@ -60,31 +61,35 @@ public final class IntArrayTag extends Tag {
 	 * @param value
 	 *            The value.
 	 */
-	public IntArrayTag(final String name, final int[] value) {
+	public ByteArrayTag(final String name, final byte[] value) {
 	
 		super(name);
-		this.value = value;
+		this.value = Arrays.copyOf(Objects.requireNonNull(value, "value"), value.length);
 	}
 	
 	@Override
-	public int[] getValue() {
+	public byte[] getValue() {
 	
-		return value;
+		return Arrays.copyOf(value, value.length);
 	}
 	
 	@Override
 	public String toString() {
 	
-		final StringBuilder integers = new StringBuilder();
-		for (final int b : value) {
-			integers.append(b).append(" ");
+		final StringBuilder hex = new StringBuilder();
+		for (final byte b : value) {
+			final String hexDigits = Integer.toHexString(b).toUpperCase();
+			if (hexDigits.length() == 1) {
+				hex.append("0");
+			}
+			hex.append(hexDigits).append(" ");
 		}
 		final String name = getName();
 		String append = "";
 		if ((name != null) && !name.equals("")) {
 			append = "(\"" + getName() + "\")";
 		}
-		return "TAG_Int_Array" + append + ": " + integers.toString();
+		return "TAG_Byte_Array" + append + ": " + hex.toString();
 	}
 	
 	/*
@@ -109,8 +114,8 @@ public final class IntArrayTag extends Tag {
 	
 		if (this == obj) { return true; }
 		if (!super.equals(obj)) { return false; }
-		if (!(obj instanceof IntArrayTag)) { return false; }
-		final IntArrayTag other = (IntArrayTag) obj;
+		if (!(obj instanceof ByteArrayTag)) { return false; }
+		final ByteArrayTag other = (ByteArrayTag) obj;
 		if (!Arrays.equals(value, other.value)) { return false; }
 		return true;
 	}

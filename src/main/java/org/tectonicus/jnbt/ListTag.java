@@ -1,4 +1,4 @@
-package org.jnbt;
+package org.tectonicus.jnbt;
 
 //@formatter:off
 
@@ -39,6 +39,7 @@ package org.jnbt;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.ArrayList;
 
 /**
  * The <code>TAG_List</code> tag.
@@ -71,8 +72,25 @@ public final class ListTag extends Tag {
 	public ListTag(final String name, final Class<? extends Tag> type, final List<Tag> value) {
 	
 		super(name);
+		if (type == null || value == null) {
+			throw new NullPointerException("List type and value are required.");
+		}
+		try {
+			NBTUtils.getTypeCode(type);
+		} catch (IllegalArgumentException e) {
+			throw new IllegalArgumentException("Unsupported NBT list element type: "
+					+ type.getName() + ".", e);
+		}
+		if (type == EndTag.class && !value.isEmpty()) {
+			throw new IllegalArgumentException("TAG_End is only valid as the type of an empty list.");
+		}
+		for (final Tag tag : value) {
+			if (tag == null || tag.getClass() != type) {
+				throw new IllegalArgumentException("List elements must all have type " + type.getName() + ".");
+			}
+		}
 		this.type = type;
-		this.value = Collections.unmodifiableList(value);
+		this.value = Collections.unmodifiableList(new ArrayList<Tag>(value));
 	}
 	
 	/**

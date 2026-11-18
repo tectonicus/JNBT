@@ -1,4 +1,4 @@
-package org.jnbt;
+package org.tectonicus.jnbt;
 
 //@formatter:off
 
@@ -37,86 +37,34 @@ package org.jnbt;
 
 //@formatter:on
 
-import java.util.Arrays;
+import java.nio.charset.Charset;
 
 /**
- * The <code>TAG_Byte_Array</code> tag.
+ * A class which holds constant values.
  * 
- * @author Graham Edgecombe
+ * @author Graham Edgecombe, Jocopa3
  * 
  */
-public final class ByteArrayTag extends Tag {
+public final class NBTConstants {
 	
 	/**
-	 * The value.
+	 * The character set used by NBT (UTF-8).
 	 */
-	private final byte[] value;
+	public static final Charset CHARSET = Charset.forName("UTF-8");
 	
 	/**
-	 * Creates the tag.
-	 * 
-	 * @param name
-	 *            The name.
-	 * @param value
-	 *            The value.
+	 * Tag type constants.
 	 */
-	public ByteArrayTag(final String name, final byte[] value) {
+	public static final int TYPE_END = 0, TYPE_BYTE = 1, TYPE_SHORT = 2,
+			TYPE_INT = 3, TYPE_LONG = 4, TYPE_FLOAT = 5, TYPE_DOUBLE = 6,
+			TYPE_BYTE_ARRAY = 7, TYPE_STRING = 8, TYPE_LIST = 9,
+			TYPE_COMPOUND = 10, TYPE_INT_ARRAY = 11, TYPE_LONG_ARRAY = 12;
 	
-		super(name);
-		this.value = value;
-	}
-	
-	@Override
-	public byte[] getValue() {
-	
-		return value;
-	}
-	
-	@Override
-	public String toString() {
-	
-		final StringBuilder hex = new StringBuilder();
-		for (final byte b : value) {
-			final String hexDigits = Integer.toHexString(b).toUpperCase();
-			if (hexDigits.length() == 1) {
-				hex.append("0");
-			}
-			hex.append(hexDigits).append(" ");
-		}
-		final String name = getName();
-		String append = "";
-		if ((name != null) && !name.equals("")) {
-			append = "(\"" + getName() + "\")";
-		}
-		return "TAG_Byte_Array" + append + ": " + hex.toString();
-	}
-	
-	/*
-	 * (non-Javadoc)
-	 * @see java.lang.Object#hashCode()
+	/**
+	 * Default private constructor.
 	 */
-	@Override
-	public int hashCode() {
+	private NBTConstants() {
 	
-		final int prime = 31;
-		int result = super.hashCode();
-		result = (prime * result) + Arrays.hashCode(value);
-		return result;
-	}
-	
-	/*
-	 * (non-Javadoc)
-	 * @see java.lang.Object#equals(java.lang.Object)
-	 */
-	@Override
-	public boolean equals(final Object obj) {
-	
-		if (this == obj) { return true; }
-		if (!super.equals(obj)) { return false; }
-		if (!(obj instanceof ByteArrayTag)) { return false; }
-		final ByteArrayTag other = (ByteArrayTag) obj;
-		if (!Arrays.equals(value, other.value)) { return false; }
-		return true;
 	}
 	
 }

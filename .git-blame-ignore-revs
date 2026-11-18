@@ -1,0 +1,6 @@
+# Commits that git blame should skip because they change formatting only.
+# GitHub uses this file automatically. For local blame, run once per clone:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# Normalize line endings to LF
+11eba93b7d74c5bf7e493308d31cd82098d66037

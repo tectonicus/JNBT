@@ -1,4 +1,4 @@
-package org.jnbt;
+package org.tectonicus.jnbt;
 
 //@formatter:off
 
@@ -38,17 +38,17 @@ package org.jnbt;
 //@formatter:on
 
 /**
- * The <code>TAG_Double</code> tag.
+ * The <code>TAG_Byte</code> tag.
  * 
  * @author Graham Edgecombe
  * 
  */
-public final class DoubleTag extends Tag {
+public final class ByteTag extends Tag {
 	
 	/**
 	 * The value.
 	 */
-	private final double value;
+	private final byte value;
 	
 	/**
 	 * Creates the tag.
@@ -58,14 +58,14 @@ public final class DoubleTag extends Tag {
 	 * @param value
 	 *            The value.
 	 */
-	public DoubleTag(final String name, final double value) {
+	public ByteTag(final String name, final byte value) {
 	
 		super(name);
 		this.value = value;
 	}
 	
 	@Override
-	public Double getValue() {
+	public Byte getValue() {
 	
 		return value;
 	}
@@ -78,7 +78,7 @@ public final class DoubleTag extends Tag {
 		if ((name != null) && !name.equals("")) {
 			append = "(\"" + getName() + "\")";
 		}
-		return "TAG_Double" + append + ": " + value;
+		return "TAG_Byte" + append + ": " + value;
 	}
 	
 	/*
@@ -90,9 +90,7 @@ public final class DoubleTag extends Tag {
 	
 		final int prime = 31;
 		int result = super.hashCode();
-		long temp;
-		temp = Double.doubleToLongBits(value);
-		result = (prime * result) + (int) (temp ^ (temp >>> 32));
+		result = (prime * result) + value;
 		return result;
 	}
 	
@@ -105,10 +103,9 @@ public final class DoubleTag extends Tag {
 	
 		if (this == obj) { return true; }
 		if (!super.equals(obj)) { return false; }
-		if (!(obj instanceof DoubleTag)) { return false; }
-		final DoubleTag other = (DoubleTag) obj;
-		if (Double.doubleToLongBits(value) != Double
-				.doubleToLongBits(other.value)) { return false; }
+		if (!(obj instanceof ByteTag)) { return false; }
+		final ByteTag other = (ByteTag) obj;
+		if (value != other.value) { return false; }
 		return true;
 	}
 	
