@@ -41,6 +41,10 @@ import java.io.Closeable;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.CodingErrorAction;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.zip.GZIPOutputStream;
 import java.util.zip.DeflaterOutputStream;
@@ -65,7 +69,8 @@ public final class NBTOutputStream implements Closeable {
 	 * The output stream.
 	 */
 	private final DataOutputStream os;
-	
+	private final NBTFormat format;
+
 	/**
 	 * Creates a new <code>NBTOutputStream</code>, which will write data to the
 	 * specified underlying output stream, GZip-compressed.
@@ -109,9 +114,30 @@ public final class NBTOutputStream implements Closeable {
 	 *             header. The output stream is closed before this is thrown.
 	 */
 	public NBTOutputStream(OutputStream output, NBTCompression compression) throws IOException {
-		if (output == null || compression == null) {
-			throw new NullPointerException("Output and compression are required.");
+		this(output, compression, NBTFormat.JAVA);
+	}
+
+	/**
+	 * Creates a new <code>NBTOutputStream</code>, which will write the given
+	 * format to the specified underlying output stream with the given
+	 * compression.
+	 *
+	 * @param output
+	 *            The output stream.
+	 * @param compression
+	 *            The compression to apply to the stream.
+	 * @param format
+	 *            The binary format, such as {@link NBTFormat#BEDROCK}.
+	 * @throws IOException
+	 *             if an I/O error occurs, such as failing to write the GZip
+	 *             header. The output stream is closed before this is thrown.
+	 */
+	public NBTOutputStream(OutputStream output, NBTCompression compression, NBTFormat format)
+			throws IOException {
+		if (output == null || compression == null || format == null) {
+			throw new NullPointerException("Output, compression and format are required.");
 		}
+		this.format = format;
 		try {
 			if (compression == NBTCompression.GZIP) {
 				output = new GZIPOutputStream(output);
@@ -144,13 +170,13 @@ public final class NBTOutputStream implements Closeable {
 	
 		final int type = NBTUtils.getTypeCode(tag.getClass());
 		final String name = tag.getName();
-		checkStringLength("Tag name", name);
+		checkString("Tag name", name);
 		if (type == NBTConstants.TYPE_END) {
 			throw new IOException("[JNBT] Named TAG_End not permitted.");
 		}
 
 		os.writeByte(type);
-		os.writeUTF(name);
+		writeString(name);
 		
 		writeTagPayload(tag);
 	}
@@ -168,24 +194,24 @@ public final class NBTOutputStream implements Closeable {
 		switch (tag) {
 			case EndTag t -> { /* TAG_End has no payload. */ }
 			case ByteTag t -> os.writeByte(t.getValue());
-			case ShortTag t -> os.writeShort(t.getValue());
-			case IntTag t -> os.writeInt(t.getValue());
-			case LongTag t -> os.writeLong(t.getValue());
-			case FloatTag t -> os.writeFloat(t.getValue());
-			case DoubleTag t -> os.writeDouble(t.getValue());
+			case ShortTag t -> writeShort(t.getValue());
+			case IntTag t -> writeInt(t.getValue());
+			case LongTag t -> writeLong(t.getValue());
+			case FloatTag t -> writeInt(Float.floatToIntBits(t.getValue()));
+			case DoubleTag t -> writeLong(Double.doubleToLongBits(t.getValue()));
 			case ByteArrayTag t -> {
 				final byte[] bytes = t.getValue();
-				os.writeInt(bytes.length);
+				writeInt(bytes.length);
 				os.write(bytes);
 			}
 			case StringTag t -> {
-				checkStringLength("String value", t.getValue());
-				os.writeUTF(t.getValue());
+				checkString("String value", t.getValue());
+				writeString(t.getValue());
 			}
 			case ListTag t -> {
 				final List<Tag> tags = t.getValue();
 				os.writeByte(NBTUtils.getTypeCode(t.getType()));
-				os.writeInt(tags.size());
+				writeInt(tags.size());
 				for (final Tag element : tags) {
 					writeTagPayload(element);
 				}
@@ -197,15 +223,15 @@ public final class NBTOutputStream implements Closeable {
 				os.writeByte(NBTConstants.TYPE_END);
 			}
 			case IntArrayTag t -> {
-				os.writeInt(t.length());
+				writeInt(t.length());
 				for (int i = 0; i < t.length(); i++) {
-					os.writeInt(t.get(i));
+					writeInt(t.get(i));
 				}
 			}
 			case LongArrayTag t -> {
-				os.writeInt(t.length());
+				writeInt(t.length());
 				for (int i = 0; i < t.length(); i++) {
-					os.writeLong(t.get(i));
+					writeLong(t.get(i));
 				}
 			}
 			default -> throw new IOException("[JNBT] Invalid tag class: "
@@ -214,9 +240,9 @@ public final class NBTOutputStream implements Closeable {
 	}
 
 	/**
-	 * Checks that a string fits in NBT's 65535-byte limit once encoded in
-	 * Java's modified UTF-8, before anything is written, so an oversized
-	 * string does not leave a partial tag in the stream.
+	 * Checks that a string fits in NBT's 65535-byte limit once encoded, before
+	 * anything is written, so an oversized string does not leave a partial tag
+	 * in the stream.
 	 *
 	 * @param kind
 	 *            What the string is, for the error message.
@@ -225,18 +251,73 @@ public final class NBTOutputStream implements Closeable {
 	 * @throws IOException
 	 *             if the encoded string is longer than 65535 bytes.
 	 */
-	private static void checkStringLength(final String kind, final String value) throws IOException {
+	private void checkString(final String kind, final String value) throws IOException {
 		long length = 0;
-		for (int i = 0; i < value.length(); i++) {
-			final char c = value.charAt(i);
-			// Modified UTF-8 encodes U+0000 in two bytes and each UTF-16 surrogate in three.
-			length += (c >= 0x0001 && c <= 0x007F) ? 1 : (c <= 0x07FF) ? 2 : 3;
+		if (format == NBTFormat.BEDROCK) {
+			length = encodeUtf8(value).length;
+		} else {
+			for (int i = 0; i < value.length(); i++) {
+				final char c = value.charAt(i);
+				// Modified UTF-8 encodes U+0000 in two bytes and each UTF-16 surrogate in three.
+				length += (c >= 0x0001 && c <= 0x007F) ? 1 : (c <= 0x07FF) ? 2 : 3;
+			}
 		}
 		if (length > 65535) {
 			throw new IOException("[JNBT] " + kind + " exceeds the 65535 byte NBT limit.");
 		}
 	}
-	
+
+	/**
+	 * Writes a length-prefixed tag name or string value, already checked by
+	 * {@link #checkString(String, String)}.
+	 */
+	private void writeString(final String value) throws IOException {
+		if (format == NBTFormat.BEDROCK) {
+			final byte[] bytes = encodeUtf8(value);
+			writeShort((short) bytes.length);
+			os.write(bytes);
+		} else {
+			os.writeUTF(value);
+		}
+	}
+
+	/**
+	 * Encodes a string in standard UTF-8, rejecting unpaired surrogates rather
+	 * than silently replacing them.
+	 */
+	private static byte[] encodeUtf8(final String value) throws IOException {
+		final ByteBuffer encoded = StandardCharsets.UTF_8.newEncoder()
+				.onMalformedInput(CodingErrorAction.REPORT)
+				.onUnmappableCharacter(CodingErrorAction.REPORT)
+				.encode(CharBuffer.wrap(value));
+		final byte[] bytes = new byte[encoded.remaining()];
+		encoded.get(bytes);
+		return bytes;
+	}
+
+	// Number writers: big-endian in the Java format, little-endian in the Bedrock format.
+
+	private void writeShort(final short value) throws IOException {
+		os.writeShort(format == NBTFormat.BEDROCK ? Short.reverseBytes(value) : value);
+	}
+
+	private void writeInt(final int value) throws IOException {
+		os.writeInt(format == NBTFormat.BEDROCK ? Integer.reverseBytes(value) : value);
+	}
+
+	private void writeLong(final long value) throws IOException {
+		os.writeLong(format == NBTFormat.BEDROCK ? Long.reverseBytes(value) : value);
+	}
+
+	/**
+	 * Gets the binary format this stream writes.
+	 *
+	 * @return The format.
+	 */
+	public NBTFormat getFormat() {
+		return format;
+	}
+
 	@Override
 	public void close() throws IOException {
 	

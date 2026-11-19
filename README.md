@@ -50,8 +50,7 @@ try (NBTInputStream in = new NBTInputStream(Files.newInputStream(path))) {
 ```
 
 `CompoundTag` has typed getters for every tag type, such as `getInt`, `getString`, `getCompound` and
-`getList(name, CompoundTag.class)`. They throw `NoSuchElementException` for a missing entry and `ClassCastException`
-for one of another type, with a message naming the entry. For optional entries, use `find(name, IntTag.class)`, which
+`getList(name, CompoundTag.class)`. For optional entries, use `find(name, IntTag.class)`, which
 returns an `Optional`, or `contains(name)`.
 
 Writing a tag, built with `CompoundTag.builder()` and `ListTag.builder(...)`:
@@ -80,18 +79,39 @@ Things to know:
 
 - **Compression:** `NBTCompression.NONE`, `GZIP` (used by `level.dat` and player files), `DEFLATE` (zlib, used for
   chunks inside region files) and `LZ4` (used for region file chunks since Minecraft 1.20.5 when
-  `region-file-compression=lz4`, compression type 4). The same enum serves both streams. `LZ4` reads and writes the
-  block format of lz4-java's `LZ4BlockOutputStream`, as Minecraft does, without needing lz4-java.
+  `region-file-compression=lz4`, compression type 4).
 - **Detecting compression:** `new NBTInputStream(input)` and `new NBTInputStream(input, limits)` look at the first bytes
-  to tell the formats apart, and `getCompression()` reports the result, so a file can be written back the same way.
-  Unrecognized input fails with an `IOException`. Pass an `NBTCompression` to skip detection, and note that a
+  to tell the formats apart, and `getCompression()` reports the result, so a file can be written back the same way. Pass an `NBTCompression` to skip detection, and note that a
   `DataInputStream` is always read uncompressed. `NBTCompression.detect(bytes)` does the same check on a byte array.
 - **Read limits:** reading checks every length in the stream before allocating memory, so a corrupt or malicious file
   fails with an `IOException` instead of exhausting memory. Pass an `NBTReadLimits` to change the defaults.
 - **Immutable tags:** compound and list values are read-only, and array tags copy their arrays in and out. Use
   `length()` and `get(int)` on the array tags to read elements without copying.
-- **Strings:** tag names and string values use Java's modified UTF-8, the same encoding as Minecraft.
+- **Strings:** tag names and string values use Java's modified UTF-8, the same encoding as Minecraft Java Edition.
 - **Order:** compound entries keep their order, so reading and rewriting a file reproduces it byte for byte.
+
+### Bedrock Edition
+
+Bedrock files use the same tags, but store numbers little-endian and strings as standard UTF-8. Pass
+`NBTFormat.BEDROCK` to either stream, for example to read a `.mcstructure` file:
+
+```java
+try (NBTInputStream in = new NBTInputStream(Files.newInputStream(path), NBTFormat.BEDROCK)) {
+    CompoundTag structure = (CompoundTag) in.readTag();
+}
+```
+
+A Bedrock `level.dat` starts with an 8-byte header (the storage version and the length of the NBT), which
+`BedrockLevelDat` reads and writes:
+
+```java
+BedrockLevelDat levelDat = BedrockLevelDat.read(worldFolder.resolve("level.dat"));
+String name = levelDat.data().getString("LevelName");
+```
+
+The rest of a Bedrock world, such as chunks and entities, is stored in a LevelDB database, which JNBT does not read.
+JNBT can decode NBT values that another library reads from it; some values hold several tags in a row, so call
+`readTag()` until the data runs out.
 
 ## Building
 
@@ -99,19 +119,18 @@ Things to know:
 ./gradlew build
 ```
 
-This compiles the library, runs the tests and checks the Javadoc.
+This compiles the library, runs the tests and checks the Javadoc. To also test against a real Bedrock world, set the
+`JNBT_BEDROCK_LEVEL_DAT` environment variable to the path of its `level.dat`; the test reads it and checks that
+writing it back reproduces the file exactly.
 
 ## Version history
-
-### Unreleased
-
-- Added `NBTCompression.LZ4` for Minecraft's LZ4-compressed region file chunks. Block checksums are verified when
-  reading.
 
 ### 2.0.0 (Tectonicus)
 
 - (Charlie Birks) `TAG_Long_Array` and zlib (Deflate) compression support.
-- Added the `NBTCompression` enum (`NONE`, `GZIP`, `DEFLATE`) to choose the compression when reading or writing.
+- Added the `NBTCompression` enum (`NONE`, `GZIP`, `DEFLATE`, `LZ4`) to choose the compression when reading or writing.
+- Added `NBTCompression.LZ4` for Minecraft's LZ4-compressed region file chunks. Block checksums are verified when
+  reading.
 - Published to Maven Central as `org.tectonicus:jnbt`, in the `org.tectonicus.jnbt` package, with a Gradle build.
 - Added `NBTReadLimits` to reject oversized or deeply nested input.
 - Made tags immutable, and rejected invalid lists and compounds and null names or values at construction.
@@ -121,11 +140,14 @@ This compiles the library, runs the tests and checks the Javadoc.
 - Added `length()` and `get(int)` to the array tags, and shortened `toString()` output for long arrays.
 - Added typed getters to `CompoundTag`, such as `getInt`, `getCompound` and `getList(name, type)`, plus `find` and
   `contains`.
-- `NBTInputStream` detects the compression when none is given, instead of assuming GZip, and reports it through
-  `getCompression()`.
+- Added automatic compression detection: `NBTInputStream` without an `NBTCompression` now tells uncompressed, GZip,
+  zlib and LZ4 input apart from its first bytes instead of assuming GZip, and reports the result through
+  `getCompression()`. `NBTCompression.detect(bytes)` runs the same check on a byte array.
 - Added a module descriptor: JNBT is the Java module `org.tectonicus.jnbt`.
 - Added builders for compounds and lists (`CompoundTag.builder()`, `toBuilder()` and `ListTag.builder(type)`).
 - `CompoundTag` rejects `TAG_End` entries, which cannot be written.
+- Added Bedrock Edition support: `NBTFormat.BEDROCK` reads and writes little-endian NBT with UTF-8 strings, and
+  `BedrockLevelDat` handles the `level.dat` header.
 
 ### 1.4 (Morlok8k)
 

@@ -44,6 +44,9 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PushbackInputStream;
+import java.nio.ByteBuffer;
+import java.nio.charset.CodingErrorAction;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -73,6 +76,7 @@ public final class NBTInputStream implements Closeable {
 	private final DataInputStream is;
 	private final NBTReadLimits limits;
 	private final NBTCompression compression;
+	private final NBTFormat format;
 
 	/**
 	 * A stream whose compression has been detected, with the bytes read for
@@ -139,11 +143,53 @@ public final class NBTInputStream implements Closeable {
 	 *             before this is thrown.
 	 */
 	public NBTInputStream(final InputStream input, final NBTReadLimits limits) throws IOException {
-		this(Detected.of(input), limits);
+		this(input, limits, NBTFormat.JAVA);
 	}
 
-	private NBTInputStream(final Detected detected, final NBTReadLimits limits) throws IOException {
-		this(detected.stream(), detected.compression(), limits);
+	/**
+	 * Creates a new <code>NBTInputStream</code> for the given format that
+	 * detects the compression of the specified input stream from its first
+	 * bytes, with the {@linkplain NBTReadLimits#DEFAULT default read limits}.
+	 * See {@link NBTCompression#detect(byte[])}.
+	 *
+	 * @param input
+	 *            The input stream.
+	 * @param format
+	 *            The binary format, such as {@link NBTFormat#BEDROCK}.
+	 * @throws IOException
+	 *             if an I/O error occurs, the stream is empty, or its
+	 *             compression is not recognized. The input stream is closed
+	 *             before this is thrown.
+	 */
+	public NBTInputStream(final InputStream input, final NBTFormat format) throws IOException {
+		this(input, NBTReadLimits.DEFAULT, format);
+	}
+
+	/**
+	 * Creates a new <code>NBTInputStream</code> for the given format that
+	 * detects the compression of the specified input stream from its first
+	 * bytes, with the given read limits. See
+	 * {@link NBTCompression#detect(byte[])}.
+	 *
+	 * @param input
+	 *            The input stream.
+	 * @param limits
+	 *            The resource limits to enforce while reading.
+	 * @param format
+	 *            The binary format, such as {@link NBTFormat#BEDROCK}.
+	 * @throws IOException
+	 *             if an I/O error occurs, the stream is empty, or its
+	 *             compression is not recognized. The input stream is closed
+	 *             before this is thrown.
+	 */
+	public NBTInputStream(final InputStream input, final NBTReadLimits limits,
+			final NBTFormat format) throws IOException {
+		this(Detected.of(input), limits, format);
+	}
+
+	private NBTInputStream(final Detected detected, final NBTReadLimits limits,
+			final NBTFormat format) throws IOException {
+		this(detected.stream(), detected.compression(), limits, format);
 	}
 
 	/**
@@ -189,6 +235,7 @@ public final class NBTInputStream implements Closeable {
 		this.is = is;
 		this.limits = limits;
 		this.compression = NBTCompression.NONE;
+		this.format = NBTFormat.JAVA;
 	}
 
 	/**
@@ -223,8 +270,30 @@ public final class NBTInputStream implements Closeable {
 	 */
 	public NBTInputStream(InputStream input, NBTCompression compression,
 			NBTReadLimits limits) throws IOException {
-		if (input == null || compression == null || limits == null) {
-			throw new NullPointerException("Input, compression and limits are required.");
+		this(input, compression, limits, NBTFormat.JAVA);
+	}
+
+	/**
+	 * Creates a new <code>NBTInputStream</code> that reads the given format
+	 * from the specified input stream with the given compression and read
+	 * limits.
+	 *
+	 * @param input
+	 *            The input stream.
+	 * @param compression
+	 *            The compression applied to the stream.
+	 * @param limits
+	 *            The resource limits to enforce while reading.
+	 * @param format
+	 *            The binary format, such as {@link NBTFormat#BEDROCK}.
+	 * @throws IOException
+	 *             if an I/O error occurs, such as a missing or corrupt GZip
+	 *             header. The input stream is closed before this is thrown.
+	 */
+	public NBTInputStream(InputStream input, NBTCompression compression,
+			NBTReadLimits limits, NBTFormat format) throws IOException {
+		if (input == null || compression == null || limits == null || format == null) {
+			throw new NullPointerException("Input, compression, limits and format are required.");
 		}
 		try {
 			if (compression == NBTCompression.GZIP) {
@@ -246,6 +315,16 @@ public final class NBTInputStream implements Closeable {
 		this.is = new DataInputStream(input);
 		this.limits = limits;
 		this.compression = compression;
+		this.format = format;
+	}
+
+	/**
+	 * Gets the binary format of this stream.
+	 *
+	 * @return The format.
+	 */
+	public NBTFormat getFormat() {
+		return format;
 	}
 
 	/**
@@ -324,15 +403,15 @@ public final class NBTInputStream implements Closeable {
 				case NBTConstants.TYPE_BYTE :
 					return new ByteTag(name, is.readByte());
 				case NBTConstants.TYPE_SHORT :
-					return new ShortTag(name, is.readShort());
+					return new ShortTag(name, readShort());
 				case NBTConstants.TYPE_INT :
-					return new IntTag(name, is.readInt());
+					return new IntTag(name, readInt());
 				case NBTConstants.TYPE_LONG :
-					return new LongTag(name, is.readLong());
+					return new LongTag(name, readLong());
 				case NBTConstants.TYPE_FLOAT :
-					return new FloatTag(name, is.readFloat());
+					return new FloatTag(name, readFloat());
 				case NBTConstants.TYPE_DOUBLE :
-					return new DoubleTag(name, is.readDouble());
+					return new DoubleTag(name, readDouble());
 				case NBTConstants.TYPE_BYTE_ARRAY :
 					int length = readLength("byte array", limits.getMaxArrayLength());
 					byte[] bytes = new byte[length];
@@ -377,14 +456,14 @@ public final class NBTInputStream implements Closeable {
 					length = readLength("int array", limits.getMaxArrayLength());
 					final int[] ints = new int[length];
 					for (int i = 0; i < length; i++) {
-						ints[i] = is.readInt();
+						ints[i] = readInt();
 					}
 					return new IntArrayTag(name, ints);
 				case NBTConstants.TYPE_LONG_ARRAY :
 					length = readLength("long array", limits.getMaxArrayLength());
 					final long[] longs = new long[length];
 					for (int i = 0; i < length; i++) {
-						longs[i] = is.readLong();
+						longs[i] = readLong();
 					}
 					return new LongArrayTag(name, longs);
 				default :
@@ -394,13 +473,23 @@ public final class NBTInputStream implements Closeable {
 	}
 
 	/**
-	 * Reads a length-prefixed string in Java's modified UTF-8, the encoding NBT
-	 * uses for tag names and string values. The length is checked against the
-	 * string limit before the bytes are allocated.
+	 * Reads a length-prefixed tag name or string value: modified UTF-8 in the
+	 * Java format, standard UTF-8 in the Bedrock format. The length is checked
+	 * against the string limit before the bytes are allocated.
 	 */
 	private String readString(final String kind) throws IOException {
-		final int length = is.readUnsignedShort();
+		final int length = readShort() & 0xFFFF;
 		checkLength(kind, length, limits.getMaxStringBytes());
+		if (format == NBTFormat.BEDROCK) {
+			final byte[] encoded = new byte[length];
+			is.readFully(encoded);
+			// A strict decoder rejects malformed input with an IOException
+			// (CharacterCodingException) instead of substituting characters.
+			return StandardCharsets.UTF_8.newDecoder()
+					.onMalformedInput(CodingErrorAction.REPORT)
+					.onUnmappableCharacter(CodingErrorAction.REPORT)
+					.decode(ByteBuffer.wrap(encoded)).toString();
+		}
 		final byte[] encoded = new byte[length + 2];
 		encoded[0] = (byte) (length >>> 8);
 		encoded[1] = (byte) length;
@@ -409,8 +498,33 @@ public final class NBTInputStream implements Closeable {
 		return DataInputStream.readUTF(new DataInputStream(new ByteArrayInputStream(encoded)));
 	}
 
+	// Number readers: big-endian in the Java format, little-endian in the Bedrock format.
+
+	private short readShort() throws IOException {
+		final short value = is.readShort();
+		return format == NBTFormat.BEDROCK ? Short.reverseBytes(value) : value;
+	}
+
+	private int readInt() throws IOException {
+		final int value = is.readInt();
+		return format == NBTFormat.BEDROCK ? Integer.reverseBytes(value) : value;
+	}
+
+	private long readLong() throws IOException {
+		final long value = is.readLong();
+		return format == NBTFormat.BEDROCK ? Long.reverseBytes(value) : value;
+	}
+
+	private float readFloat() throws IOException {
+		return Float.intBitsToFloat(readInt());
+	}
+
+	private double readDouble() throws IOException {
+		return Double.longBitsToDouble(readLong());
+	}
+
 	private int readLength(final String kind, final int maximum) throws IOException {
-		final int length = is.readInt();
+		final int length = readInt();
 		checkLength(kind, length, maximum);
 		return length;
 	}
