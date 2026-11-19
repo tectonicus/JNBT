@@ -75,6 +75,16 @@ try (NBTOutputStream out = new NBTOutputStream(Files.newOutputStream(path), NBTC
 replaces that entry in place. Tags are immutable, so to change one, call `toBuilder()` on a compound, change it, and
 build a new one.
 
+Printing a tag as SNBT, the text form Minecraft uses in commands:
+
+```java
+SNBT.toString(root);       // {name:"Example",heights:[I;64,65,66],spawn:{x:0,y:64,z:0},...}
+SNBT.toPrettyString(root); // the same, indented across several lines
+```
+
+The output uses the syntax every Minecraft version since 1.13 reads. SNBT has no place for the outermost tag's name, so
+it is left out. JNBT writes SNBT but does not parse it.
+
 Things to know:
 
 - **Compression:** `NBTCompression.NONE`, `GZIP` (used by `level.dat` and player files), `DEFLATE` (zlib, used for
@@ -148,6 +158,7 @@ writing it back reproduces the file exactly.
 - `CompoundTag` rejects `TAG_End` entries, which cannot be written.
 - Added Bedrock Edition support: `NBTFormat.BEDROCK` reads and writes little-endian NBT with UTF-8 strings, and
   `BedrockLevelDat` handles the `level.dat` header.
+- Added SNBT output: `SNBT.toString(tag)` and `SNBT.toPrettyString(tag)`.
 
 ### 1.4 (Morlok8k)
 
