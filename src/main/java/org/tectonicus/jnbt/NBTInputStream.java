@@ -40,8 +40,10 @@ package org.tectonicus.jnbt;
 import java.io.ByteArrayInputStream;
 import java.io.Closeable;
 import java.io.DataInputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PushbackInputStream;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -70,7 +72,80 @@ public final class NBTInputStream implements Closeable {
 	 */
 	private final DataInputStream is;
 	private final NBTReadLimits limits;
-	
+	private final NBTCompression compression;
+
+	/**
+	 * A stream whose compression has been detected, with the bytes read for
+	 * detection pushed back so that nothing is lost.
+	 */
+	private record Detected(InputStream stream, NBTCompression compression) {
+		static Detected of(final InputStream input) throws IOException {
+			if (input == null) {
+				throw new NullPointerException("Input is required.");
+			}
+			try {
+				final PushbackInputStream pushback = new PushbackInputStream(input,
+						NBTCompression.DETECT_BYTES);
+				final byte[] start = pushback.readNBytes(NBTCompression.DETECT_BYTES);
+				pushback.unread(start);
+				if (start.length == 0) {
+					throw new EOFException("[JNBT] The NBT stream is empty.");
+				}
+				final NBTCompression compression = NBTCompression.detect(start).orElseThrow(
+						() -> new IOException(String.format(
+								"[JNBT] Unrecognized NBT compression: the stream starts with 0x%02X.",
+								start[0] & 0xFF)));
+				return new Detected(pushback, compression);
+			} catch (IOException | RuntimeException e) {
+				try {
+					input.close();
+				} catch (IOException suppressed) {
+					e.addSuppressed(suppressed);
+				}
+				throw e;
+			}
+		}
+	}
+
+	/**
+	 * Creates a new <code>NBTInputStream</code> that detects the compression
+	 * of the specified input stream from its first bytes, with the
+	 * {@linkplain NBTReadLimits#DEFAULT default read limits}. See
+	 * {@link NBTCompression#detect(byte[])}.
+	 *
+	 * @param input
+	 *            The input stream.
+	 * @throws IOException
+	 *             if an I/O error occurs, the stream is empty, or its
+	 *             compression is not recognized. The input stream is closed
+	 *             before this is thrown.
+	 */
+	public NBTInputStream(final InputStream input) throws IOException {
+		this(input, NBTReadLimits.DEFAULT);
+	}
+
+	/**
+	 * Creates a new <code>NBTInputStream</code> that detects the compression
+	 * of the specified input stream from its first bytes, with the given read
+	 * limits. See {@link NBTCompression#detect(byte[])}.
+	 *
+	 * @param input
+	 *            The input stream.
+	 * @param limits
+	 *            The resource limits to enforce while reading.
+	 * @throws IOException
+	 *             if an I/O error occurs, the stream is empty, or its
+	 *             compression is not recognized. The input stream is closed
+	 *             before this is thrown.
+	 */
+	public NBTInputStream(final InputStream input, final NBTReadLimits limits) throws IOException {
+		this(Detected.of(input), limits);
+	}
+
+	private NBTInputStream(final Detected detected, final NBTReadLimits limits) throws IOException {
+		this(detected.stream(), detected.compression(), limits);
+	}
+
 	/**
 	 * Creates a new <code>NBTInputStream</code>, which will source its data
 	 * from the specified input stream.
@@ -84,19 +159,6 @@ public final class NBTInputStream implements Closeable {
 	 */
 	public NBTInputStream(InputStream is, final boolean gzipped) throws IOException {
 		this(is, gzipped ? NBTCompression.GZIP : NBTCompression.NONE, NBTReadLimits.DEFAULT);
-	}
-	
-	/**
-	 * Creates a new <code>NBTInputStream</code>, which will source its data
-	 * from the specified GZIP-compressed input stream.
-	 * 
-	 * @param is
-	 *            The input stream.
-	 * @throws IOException
-	 *             if an I/O error occurs.
-	 */
-	public NBTInputStream(final InputStream is) throws IOException {
-		this(is, NBTCompression.GZIP, NBTReadLimits.DEFAULT);
 	}
 	
 	/**
@@ -126,6 +188,7 @@ public final class NBTInputStream implements Closeable {
 		}
 		this.is = is;
 		this.limits = limits;
+		this.compression = NBTCompression.NONE;
 	}
 
 	/**
@@ -182,6 +245,17 @@ public final class NBTInputStream implements Closeable {
 		}
 		this.is = new DataInputStream(input);
 		this.limits = limits;
+		this.compression = compression;
+	}
+
+	/**
+	 * Gets the compression of this stream: the one given when it was created,
+	 * or the one detected. Useful for writing a file back the same way.
+	 *
+	 * @return The compression.
+	 */
+	public NBTCompression getCompression() {
+		return compression;
 	}
 
 	/**

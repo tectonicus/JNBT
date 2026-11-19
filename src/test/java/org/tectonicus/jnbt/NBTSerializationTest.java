@@ -167,7 +167,7 @@ class NBTSerializationTest {
 			@Override
 			public void close() { closed[0] = true; }
 		};
-		assertThrows(IOException.class, () -> new NBTInputStream(notGzip));
+		assertThrows(IOException.class, () -> new NBTInputStream(notGzip, NBTCompression.GZIP));
 		assertTrue(closed[0]);
 
 		closed[0] = false;

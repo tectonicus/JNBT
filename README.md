@@ -31,10 +31,10 @@ Maven:
 
 ## Usage
 
-Reading a GZip-compressed file such as `level.dat`:
+Reading a file such as `level.dat`, detecting its compression:
 
 ```java
-try (NBTInputStream in = new NBTInputStream(Files.newInputStream(path), NBTCompression.GZIP)) {
+try (NBTInputStream in = new NBTInputStream(Files.newInputStream(path))) {
     CompoundTag root = (CompoundTag) in.readTag();
     CompoundTag data = root.getCompound("Data");
     System.out.println(data.getString("LevelName"));
@@ -65,6 +65,10 @@ Things to know:
   chunks inside region files) and `LZ4` (used for region file chunks since Minecraft 1.20.5 when
   `region-file-compression=lz4`, compression type 4). The same enum serves both streams. `LZ4` reads and writes the
   block format of lz4-java's `LZ4BlockOutputStream`, as Minecraft does, without needing lz4-java.
+- **Detecting compression:** `new NBTInputStream(input)` and `new NBTInputStream(input, limits)` look at the first bytes
+  to tell the formats apart, and `getCompression()` reports the result, so a file can be written back the same way.
+  Unrecognized input fails with an `IOException`. Pass an `NBTCompression` to skip detection, and note that a
+  `DataInputStream` is always read uncompressed. `NBTCompression.detect(bytes)` does the same check on a byte array.
 - **Read limits:** reading checks every length in the stream before allocating memory, so a corrupt or malicious file
   fails with an `IOException` instead of exhausting memory. Pass an `NBTReadLimits` to change the defaults.
 - **Immutable tags:** compound and list values are read-only, and array tags copy their arrays in and out. Use
@@ -100,6 +104,8 @@ This compiles the library, runs the tests and checks the Javadoc.
 - Added `length()` and `get(int)` to the array tags, and shortened `toString()` output for long arrays.
 - Added typed getters to `CompoundTag`, such as `getInt`, `getCompound` and `getList(name, type)`, plus `find` and
   `contains`.
+- `NBTInputStream` detects the compression when none is given, instead of assuming GZip, and reports it through
+  `getCompression()`.
 
 ### 1.4 (Morlok8k)
 
