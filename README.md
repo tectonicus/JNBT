@@ -36,11 +36,15 @@ Reading a GZip-compressed file such as `level.dat`:
 ```java
 try (NBTInputStream in = new NBTInputStream(Files.newInputStream(path), NBTCompression.GZIP)) {
     CompoundTag root = (CompoundTag) in.readTag();
-    CompoundTag data = (CompoundTag) root.getValue().get("Data");
-    StringTag levelName = (StringTag) data.getValue().get("LevelName");
-    System.out.println(levelName.getValue());
+    CompoundTag data = root.getCompound("Data");
+    System.out.println(data.getString("LevelName"));
 }
 ```
+
+`CompoundTag` has typed getters for every tag type, such as `getInt`, `getString`, `getCompound` and
+`getList(name, CompoundTag.class)`. They throw `NoSuchElementException` for a missing entry and `ClassCastException`
+for one of another type, with a message naming the entry. For optional entries, use `find(name, IntTag.class)`, which
+returns an `Optional`, or `contains(name)`.
 
 Writing a tag:
 
@@ -94,6 +98,8 @@ This compiles the library, runs the tests and checks the Javadoc.
 - Kept compound entries in order when reading, and stored list entries without names, as the format does.
 - Closed the underlying stream when a constructor fails.
 - Added `length()` and `get(int)` to the array tags, and shortened `toString()` output for long arrays.
+- Added typed getters to `CompoundTag`, such as `getInt`, `getCompound` and `getList(name, type)`, plus `find` and
+  `contains`.
 
 ### 1.4 (Morlok8k)
 
