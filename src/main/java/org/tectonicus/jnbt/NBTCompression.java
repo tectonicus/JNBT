@@ -16,5 +16,13 @@ public enum NBTCompression {
 	 * The stream is zlib (Deflate) compressed, as Minecraft does for chunks
 	 * inside region files.
 	 */
-	DEFLATE
+	DEFLATE,
+	/**
+	 * The stream is LZ4-compressed in the block format of lz4-java's
+	 * <code>LZ4BlockOutputStream</code>, as Minecraft 1.20.5 and later do for
+	 * chunks inside region files when <code>region-file-compression</code> is
+	 * set to <code>lz4</code> (compression type 4 in the chunk header). Each
+	 * block's checksum is verified when reading.
+	 */
+	LZ4
 }

@@ -168,6 +168,8 @@ public final class NBTInputStream implements Closeable {
 				input = new GZIPInputStream(input);
 			} else if (compression == NBTCompression.DEFLATE) {
 				input = new InflaterInputStream(input);
+			} else if (compression == NBTCompression.LZ4) {
+				input = new LZ4BlockInputStream(input);
 			}
 		} catch (IOException | RuntimeException e) {
 			// The stream would otherwise leak: the caller never gets an object to close.

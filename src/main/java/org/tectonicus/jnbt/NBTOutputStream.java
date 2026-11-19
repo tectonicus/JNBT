@@ -117,6 +117,8 @@ public final class NBTOutputStream implements Closeable {
 				output = new GZIPOutputStream(output);
 			} else if (compression == NBTCompression.DEFLATE) {
 				output = new DeflaterOutputStream(output);
+			} else if (compression == NBTCompression.LZ4) {
+				output = new LZ4BlockOutputStream(output);
 			}
 		} catch (IOException | RuntimeException e) {
 			// The stream would otherwise leak: the caller never gets an object to close.

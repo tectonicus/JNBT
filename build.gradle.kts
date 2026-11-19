@@ -40,11 +40,21 @@ tasks.withType<Jar>().configureEach {
 dependencies {
     testImplementation(platform("org.junit:junit-bom:6.0.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
+    // The LZ4 library Minecraft bundles, used only to check that JNBT's LZ4 streams are compatible with it.
+    testImplementation("org.lz4:lz4-java:1.8.0")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 tasks.test {
     useJUnitPlatform()
+}
+
+// Compares JNBT's LZ4 streams with lz4-java. Pass --args="<world or saves folder>" to use real chunks.
+tasks.register<JavaExec>("lz4Benchmark") {
+    description = "Benchmarks JNBT's LZ4 compression against lz4-java."
+    group = "verification"
+    classpath = sourceSets["test"].runtimeClasspath
+    mainClass.set("org.tectonicus.jnbt.LZ4Benchmark")
 }
 
 publishing {

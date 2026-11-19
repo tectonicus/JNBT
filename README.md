@@ -57,8 +57,10 @@ try (NBTOutputStream out = new NBTOutputStream(Files.newOutputStream(path), NBTC
 
 Things to know:
 
-- **Compression:** `NBTCompression.NONE`, `GZIP` (used by `level.dat` and player files) and `DEFLATE` (zlib, used for
-  chunks inside region files). The same enum serves both streams.
+- **Compression:** `NBTCompression.NONE`, `GZIP` (used by `level.dat` and player files), `DEFLATE` (zlib, used for
+  chunks inside region files) and `LZ4` (used for region file chunks since Minecraft 1.20.5 when
+  `region-file-compression=lz4`, compression type 4). The same enum serves both streams. `LZ4` reads and writes the
+  block format of lz4-java's `LZ4BlockOutputStream`, as Minecraft does, without needing lz4-java.
 - **Read limits:** reading checks every length in the stream before allocating memory, so a corrupt or malicious file
   fails with an `IOException` instead of exhausting memory. Pass an `NBTReadLimits` to change the defaults.
 - **Immutable tags:** compound and list values are read-only, and array tags copy their arrays in and out. Use
@@ -75,6 +77,11 @@ Things to know:
 This compiles the library, runs the tests and checks the Javadoc.
 
 ## Version history
+
+### Unreleased
+
+- Added `NBTCompression.LZ4` for Minecraft's LZ4-compressed region file chunks. Block checksums are verified when
+  reading.
 
 ### 2.0.0 (Tectonicus)
 
