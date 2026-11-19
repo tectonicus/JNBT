@@ -29,6 +29,14 @@ Maven:
 </dependency>
 ```
 
+JNBT is a Java module named `org.tectonicus.jnbt`. If your project uses modules, add it to your `module-info.java`:
+
+```java
+requires org.tectonicus.jnbt;
+```
+
+On the class path it works like any other JAR.
+
 ## Usage
 
 Reading a file such as `level.dat`, detecting its compression:
@@ -106,6 +114,7 @@ This compiles the library, runs the tests and checks the Javadoc.
   `contains`.
 - `NBTInputStream` detects the compression when none is given, instead of assuming GZip, and reports it through
   `getCompression()`.
+- Added a module descriptor: JNBT is the Java module `org.tectonicus.jnbt`.
 
 ### 1.4 (Morlok8k)
 
