@@ -54,18 +54,27 @@ try (NBTInputStream in = new NBTInputStream(Files.newInputStream(path))) {
 for one of another type, with a message naming the entry. For optional entries, use `find(name, IntTag.class)`, which
 returns an `Optional`, or `contains(name)`.
 
-Writing a tag:
+Writing a tag, built with `CompoundTag.builder()` and `ListTag.builder(...)`:
 
 ```java
-Map<String, Tag> entries = new LinkedHashMap<>();
-entries.put("name", new StringTag("name", "Example"));
-entries.put("heights", new IntArrayTag("heights", new int[] { 64, 65, 66 }));
-CompoundTag root = new CompoundTag("", entries);
+CompoundTag root = CompoundTag.builder()
+    .putString("name", "Example")
+    .putIntArray("heights", new int[] { 64, 65, 66 })
+    .putCompound("spawn", spawn -> spawn.putInt("x", 0).putInt("y", 64).putInt("z", 0))
+    .put("tags", ListTag.builder(StringTag.class)
+        .add(new StringTag("", "first"))
+        .add(new StringTag("", "second"))
+        .build())
+    .build();
 
 try (NBTOutputStream out = new NBTOutputStream(Files.newOutputStream(path), NBTCompression.GZIP)) {
     out.writeTag(root);
 }
 ```
+
+`put(name, tag)` names a tag made elsewhere, such as a list or compound from its own builder. Putting a name again
+replaces that entry in place. Tags are immutable, so to change one, call `toBuilder()` on a compound, change it, and
+build a new one.
 
 Things to know:
 
@@ -115,6 +124,8 @@ This compiles the library, runs the tests and checks the Javadoc.
 - `NBTInputStream` detects the compression when none is given, instead of assuming GZip, and reports it through
   `getCompression()`.
 - Added a module descriptor: JNBT is the Java module `org.tectonicus.jnbt`.
+- Added builders for compounds and lists (`CompoundTag.builder()`, `toBuilder()` and `ListTag.builder(type)`).
+- `CompoundTag` rejects `TAG_End` entries, which cannot be written.
 
 ### 1.4 (Morlok8k)
 

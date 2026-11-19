@@ -91,33 +91,112 @@ public final class ListTag extends Tag {
 			if (tag == null || tag.getClass() != type) {
 				throw new IllegalArgumentException("List elements must all have type " + type.getName() + ".");
 			}
-			copy.add(unnamed(tag));
+			// The NBT format stores no names for list elements.
+			copy.add(tag.withName(""));
 		}
 		this.type = type;
 		this.value = Collections.unmodifiableList(copy);
 	}
 
 	/**
-	 * Returns the tag itself if it has no name, or else an unnamed copy of it.
-	 * The NBT format stores no names for list elements.
+	 * Creates a builder for a list with the given name and element type.
+	 *
+	 * @param <T>
+	 *            The element type.
+	 * @param name
+	 *            The list's name; use an empty string for an unnamed list.
+	 * @param type
+	 *            The element tag class, such as <code>CompoundTag.class</code>.
+	 * @return The builder.
 	 */
-	private static Tag unnamed(final Tag tag) {
-		if (tag.getName().isEmpty()) {
-			return tag;
+	public static <T extends Tag> Builder<T> builder(final String name, final Class<T> type) {
+
+		return new Builder<T>(name, type);
+	}
+
+	/**
+	 * Creates a builder for an unnamed list with the given element type, as
+	 * used for a list inside another list, or one to pass to
+	 * {@link CompoundTag.Builder#put(String, Tag)}.
+	 *
+	 * @param <T>
+	 *            The element type.
+	 * @param type
+	 *            The element tag class, such as <code>CompoundTag.class</code>.
+	 * @return The builder.
+	 */
+	public static <T extends Tag> Builder<T> builder(final Class<T> type) {
+
+		return builder("", type);
+	}
+
+	/**
+	 * Builds a {@link ListTag} one element at a time. Element names are
+	 * dropped, since NBT list elements are unnamed.
+	 *
+	 * @param <T>
+	 *            The element type.
+	 */
+	public static final class Builder<T extends Tag> {
+		private final String name;
+		private final Class<T> type;
+		private final List<Tag> elements = new ArrayList<Tag>();
+
+		private Builder(final String name, final Class<T> type) {
+			if (name == null || type == null) {
+				throw new NullPointerException("List name and type are required.");
+			}
+			this.name = name;
+			this.type = type;
 		}
-		if (tag instanceof ByteTag t) { return new ByteTag("", t.getValue()); }
-		if (tag instanceof ShortTag t) { return new ShortTag("", t.getValue()); }
-		if (tag instanceof IntTag t) { return new IntTag("", t.getValue()); }
-		if (tag instanceof LongTag t) { return new LongTag("", t.getValue()); }
-		if (tag instanceof FloatTag t) { return new FloatTag("", t.getValue()); }
-		if (tag instanceof DoubleTag t) { return new DoubleTag("", t.getValue()); }
-		if (tag instanceof ByteArrayTag t) { return new ByteArrayTag("", t.getValue()); }
-		if (tag instanceof StringTag t) { return new StringTag("", t.getValue()); }
-		if (tag instanceof ListTag t) { return new ListTag("", t.getType(), t.getValue()); }
-		if (tag instanceof CompoundTag t) { return new CompoundTag("", t.getValue()); }
-		if (tag instanceof IntArrayTag t) { return new IntArrayTag("", t.getValue()); }
-		if (tag instanceof LongArrayTag t) { return new LongArrayTag("", t.getValue()); }
-		throw new IllegalArgumentException("Unsupported NBT tag type: " + tag.getClass().getName() + ".");
+
+		/**
+		 * Adds an element.
+		 *
+		 * @param element
+		 *            The element.
+		 * @return This builder.
+		 * @throws NullPointerException
+		 *             if the element is null.
+		 */
+		public Builder<T> add(final T element) {
+
+			if (element == null) {
+				throw new NullPointerException("List elements cannot be null.");
+			}
+			elements.add(element);
+			return this;
+		}
+
+		/**
+		 * Adds elements, in order.
+		 *
+		 * @param elements
+		 *            The elements.
+		 * @return This builder.
+		 * @throws NullPointerException
+		 *             if any element is null.
+		 */
+		public Builder<T> addAll(final Iterable<? extends T> elements) {
+
+			for (final T element : elements) {
+				add(element);
+			}
+			return this;
+		}
+
+		/**
+		 * Builds the list.
+		 *
+		 * @return The list.
+		 * @throws IllegalArgumentException
+		 *             if the element type is not a supported tag type, or is
+		 *             <code>EndTag</code> and elements were added.
+		 */
+		public ListTag build() {
+
+			return new ListTag(name, type, elements);
+		}
 	}
 	
 	/**

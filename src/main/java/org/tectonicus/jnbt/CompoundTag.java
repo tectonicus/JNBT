@@ -43,6 +43,7 @@ import java.util.Map;
 import java.util.LinkedHashMap;
 import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 /**
  * The <code>TAG_Compound</code> tag.
@@ -77,11 +78,306 @@ public final class CompoundTag extends Tag {
 					|| !entry.getKey().equals(entry.getValue().getName())) {
 				throw new IllegalArgumentException("Compound keys must match non-null child tag names.");
 			}
+			if (entry.getValue() instanceof EndTag) {
+				throw new IllegalArgumentException("TAG_End cannot be an entry in a compound.");
+			}
 			copy.put(entry.getKey(), entry.getValue());
 		}
 		this.value = Collections.unmodifiableMap(copy);
 	}
-	
+
+	/**
+	 * Creates a builder for an unnamed compound, as used for the root of most
+	 * files, for a list element, or for one to pass to
+	 * {@link Builder#put(String, Tag)}.
+	 *
+	 * @return The builder.
+	 */
+	public static Builder builder() {
+
+		return builder("");
+	}
+
+	/**
+	 * Creates a builder for a compound with the given name.
+	 *
+	 * @param name
+	 *            The compound's name.
+	 * @return The builder.
+	 */
+	public static Builder builder(final String name) {
+
+		return new Builder(name);
+	}
+
+	/**
+	 * Creates a builder that starts with this compound's name and entries, to
+	 * make a changed copy of it.
+	 *
+	 * @return The builder.
+	 */
+	public Builder toBuilder() {
+
+		final Builder builder = new Builder(getName());
+		builder.entries.putAll(value);
+		return builder;
+	}
+
+	/**
+	 * Builds a {@link CompoundTag} one entry at a time. Entries keep the order
+	 * they were first added in, and adding a name again replaces its entry in
+	 * place.
+	 */
+	public static final class Builder {
+		private final String name;
+		private final Map<String, Tag> entries = new LinkedHashMap<String, Tag>();
+
+		private Builder(final String name) {
+			if (name == null) {
+				throw new NullPointerException("Compound name is required.");
+			}
+			this.name = name;
+		}
+
+		/**
+		 * Adds a tag as an entry under its own name.
+		 *
+		 * @param tag
+		 *            The tag.
+		 * @return This builder.
+		 * @throws IllegalArgumentException
+		 *             if the tag is an <code>EndTag</code>.
+		 */
+		public Builder put(final Tag tag) {
+
+			if (tag instanceof EndTag) {
+				throw new IllegalArgumentException("TAG_End cannot be an entry in a compound.");
+			}
+			entries.put(tag.getName(), tag);
+			return this;
+		}
+
+		/**
+		 * Adds a tag as an entry under the given name, renaming a copy of the
+		 * tag if its name differs. Use this for compounds and lists made with
+		 * their own builders.
+		 *
+		 * @param name
+		 *            The entry name.
+		 * @param tag
+		 *            The tag.
+		 * @return This builder.
+		 * @throws IllegalArgumentException
+		 *             if the tag is an <code>EndTag</code>.
+		 */
+		public Builder put(final String name, final Tag tag) {
+
+			if (name == null) {
+				throw new NullPointerException("Entry name is required.");
+			}
+			if (tag instanceof EndTag) {
+				throw new IllegalArgumentException("TAG_End cannot be an entry in a compound.");
+			}
+			return put(tag.withName(name));
+		}
+
+		/**
+		 * Adds a <code>TAG_Byte</code> entry.
+		 *
+		 * @param name
+		 *            The entry name.
+		 * @param value
+		 *            The value.
+		 * @return This builder.
+		 */
+		public Builder putByte(final String name, final byte value) {
+
+			return put(new ByteTag(name, value));
+		}
+
+		/**
+		 * Adds a <code>TAG_Byte</code> entry holding 1 for <code>true</code>
+		 * or 0 for <code>false</code>, as Minecraft stores booleans.
+		 *
+		 * @param name
+		 *            The entry name.
+		 * @param value
+		 *            The value.
+		 * @return This builder.
+		 */
+		public Builder putBoolean(final String name, final boolean value) {
+
+			return putByte(name, value ? (byte) 1 : (byte) 0);
+		}
+
+		/**
+		 * Adds a <code>TAG_Short</code> entry.
+		 *
+		 * @param name
+		 *            The entry name.
+		 * @param value
+		 *            The value.
+		 * @return This builder.
+		 */
+		public Builder putShort(final String name, final short value) {
+
+			return put(new ShortTag(name, value));
+		}
+
+		/**
+		 * Adds a <code>TAG_Int</code> entry.
+		 *
+		 * @param name
+		 *            The entry name.
+		 * @param value
+		 *            The value.
+		 * @return This builder.
+		 */
+		public Builder putInt(final String name, final int value) {
+
+			return put(new IntTag(name, value));
+		}
+
+		/**
+		 * Adds a <code>TAG_Long</code> entry.
+		 *
+		 * @param name
+		 *            The entry name.
+		 * @param value
+		 *            The value.
+		 * @return This builder.
+		 */
+		public Builder putLong(final String name, final long value) {
+
+			return put(new LongTag(name, value));
+		}
+
+		/**
+		 * Adds a <code>TAG_Float</code> entry.
+		 *
+		 * @param name
+		 *            The entry name.
+		 * @param value
+		 *            The value.
+		 * @return This builder.
+		 */
+		public Builder putFloat(final String name, final float value) {
+
+			return put(new FloatTag(name, value));
+		}
+
+		/**
+		 * Adds a <code>TAG_Double</code> entry.
+		 *
+		 * @param name
+		 *            The entry name.
+		 * @param value
+		 *            The value.
+		 * @return This builder.
+		 */
+		public Builder putDouble(final String name, final double value) {
+
+			return put(new DoubleTag(name, value));
+		}
+
+		/**
+		 * Adds a <code>TAG_String</code> entry.
+		 *
+		 * @param name
+		 *            The entry name.
+		 * @param value
+		 *            The value.
+		 * @return This builder.
+		 */
+		public Builder putString(final String name, final String value) {
+
+			return put(new StringTag(name, value));
+		}
+
+		/**
+		 * Adds a <code>TAG_Byte_Array</code> entry holding a copy of the array.
+		 *
+		 * @param name
+		 *            The entry name.
+		 * @param value
+		 *            The value.
+		 * @return This builder.
+		 */
+		public Builder putByteArray(final String name, final byte[] value) {
+
+			return put(new ByteArrayTag(name, value));
+		}
+
+		/**
+		 * Adds a <code>TAG_Int_Array</code> entry holding a copy of the array.
+		 *
+		 * @param name
+		 *            The entry name.
+		 * @param value
+		 *            The value.
+		 * @return This builder.
+		 */
+		public Builder putIntArray(final String name, final int[] value) {
+
+			return put(new IntArrayTag(name, value));
+		}
+
+		/**
+		 * Adds a <code>TAG_Long_Array</code> entry holding a copy of the array.
+		 *
+		 * @param name
+		 *            The entry name.
+		 * @param value
+		 *            The value.
+		 * @return This builder.
+		 */
+		public Builder putLongArray(final String name, final long[] value) {
+
+			return put(new LongArrayTag(name, value));
+		}
+
+		/**
+		 * Adds a nested <code>TAG_Compound</code> entry, filled in by the
+		 * given function, such as
+		 * <code>putCompound("Pos", pos -&gt; pos.putInt("x", 1))</code>.
+		 *
+		 * @param name
+		 *            The entry name.
+		 * @param contents
+		 *            Adds the nested compound's entries to its builder.
+		 * @return This builder.
+		 */
+		public Builder putCompound(final String name, final Consumer<Builder> contents) {
+
+			final Builder nested = new Builder(name);
+			contents.accept(nested);
+			return put(nested.build());
+		}
+
+		/**
+		 * Removes an entry, if it exists.
+		 *
+		 * @param name
+		 *            The entry name.
+		 * @return This builder.
+		 */
+		public Builder remove(final String name) {
+
+			entries.remove(name);
+			return this;
+		}
+
+		/**
+		 * Builds the compound.
+		 *
+		 * @return The compound.
+		 */
+		public CompoundTag build() {
+
+			return new CompoundTag(name, entries);
+		}
+	}
+
 	@Override
 	public Map<String, Tag> getValue() {
 

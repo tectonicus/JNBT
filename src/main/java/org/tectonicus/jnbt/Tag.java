@@ -83,6 +83,40 @@ public abstract class Tag {
 	public abstract Object getValue();
 
 	/**
+	 * Returns this tag with a different name: the tag itself if the name
+	 * already matches, or else a copy. Tags are immutable, so the copy shares
+	 * this tag's children.
+	 *
+	 * @param newName
+	 *            The name.
+	 * @return The renamed tag.
+	 * @throws IllegalArgumentException
+	 *             if this is an <code>EndTag</code>, which has no name.
+	 */
+	final Tag withName(final String newName) {
+
+		if (name.equals(newName)) {
+			return this;
+		}
+		return switch (this) {
+			case ByteTag t -> new ByteTag(newName, t.getValue());
+			case ShortTag t -> new ShortTag(newName, t.getValue());
+			case IntTag t -> new IntTag(newName, t.getValue());
+			case LongTag t -> new LongTag(newName, t.getValue());
+			case FloatTag t -> new FloatTag(newName, t.getValue());
+			case DoubleTag t -> new DoubleTag(newName, t.getValue());
+			case ByteArrayTag t -> new ByteArrayTag(newName, t.getValue());
+			case StringTag t -> new StringTag(newName, t.getValue());
+			case ListTag t -> new ListTag(newName, t.getType(), t.getValue());
+			case CompoundTag t -> new CompoundTag(newName, t.getValue());
+			case IntArrayTag t -> new IntArrayTag(newName, t.getValue());
+			case LongArrayTag t -> new LongArrayTag(newName, t.getValue());
+			default -> throw new IllegalArgumentException("Cannot name a "
+					+ NBTUtils.getTypeName(getClass()) + ".");
+		};
+	}
+
+	/**
 	 * Formats the start of <code>toString()</code>: the tag type, followed by
 	 * the name in quotes if the tag has one, such as <code>TAG_Int("x")</code>.
 	 *
