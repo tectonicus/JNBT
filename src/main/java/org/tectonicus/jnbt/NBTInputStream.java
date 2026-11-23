@@ -37,6 +37,7 @@ package org.tectonicus.jnbt;
 
 //@formatter:on
 
+import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.Closeable;
 import java.io.DataInputStream;
@@ -70,7 +71,15 @@ import java.util.zip.InflaterInputStream;
  * 
  */
 public final class NBTInputStream implements Closeable {
-/**
+	/**
+	 * The size of the buffer placed after a GZip or Deflate decompressor.
+	 * <code>DataInputStream</code> reads most values a byte or a few bytes at
+	 * a time, and without the buffer each of those reads is a separate call
+	 * into the <code>Inflater</code>.
+	 */
+	private static final int DECOMPRESSED_BUFFER_SIZE = 64 * 1024;
+
+	/**
 	 * The data input stream.
 	 */
 	private final DataInputStream is;
@@ -296,10 +305,14 @@ public final class NBTInputStream implements Closeable {
 			throw new NullPointerException("Input, compression, limits and format are required.");
 		}
 		try {
+			// LZ4BlockInputStream already serves reads from a whole decompressed
+			// block, so only the Inflater-based streams need a buffer after them.
 			if (compression == NBTCompression.GZIP) {
-				input = new GZIPInputStream(input);
+				input = new BufferedInputStream(new GZIPInputStream(input),
+						DECOMPRESSED_BUFFER_SIZE);
 			} else if (compression == NBTCompression.DEFLATE) {
-				input = new InflaterInputStream(input);
+				input = new BufferedInputStream(new InflaterInputStream(input),
+						DECOMPRESSED_BUFFER_SIZE);
 			} else if (compression == NBTCompression.LZ4) {
 				input = new LZ4BlockInputStream(input);
 			}
